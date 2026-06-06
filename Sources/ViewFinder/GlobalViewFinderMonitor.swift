@@ -119,11 +119,42 @@ final class GlobalViewFinderMonitor {
                 }
                 return (
                     hostingView,
-                    replacingStaleRoot(in: renderedComponents, with: mountedComponents.last)
+                    replacingStaleRoot(
+                        in: renderedComponents,
+                        with: activeComponent(in: hostingView, window: window)
+                            ?? mountedComponents.last
+                    )
                 )
             }
         }
         return nil
+    }
+
+    private func activeComponent(in hostingView: UIView, window: UIWindow) -> RenderedComponent? {
+        guard let selectedIndex = selectedTabIndex(in: window) else { return nil }
+        let roots = PrivateRenderedHierarchyProbe.currentRoots(fromUnknownHostingView: hostingView)
+        guard let root = roots.last, root.children.indices.contains(selectedIndex) else {
+            return nil
+        }
+        let child = root.children[selectedIndex]
+        return RenderedComponent(
+            name: child.name,
+            qualifiedName: child.qualifiedName,
+            frame: hostingView.bounds,
+            children: []
+        )
+    }
+
+    private func selectedTabIndex(in window: UIWindow) -> Int? {
+        let tabBars = ([window] + window.allDescendantsInFrontToBack())
+            .compactMap { $0 as? UITabBar }
+            .filter(\.isEffectivelyVisible)
+        guard let tabBar = tabBars.first,
+              let selectedItem = tabBar.selectedItem,
+              let items = tabBar.items else {
+            return nil
+        }
+        return items.firstIndex(of: selectedItem)
     }
 
     private func replacingStaleRoot(

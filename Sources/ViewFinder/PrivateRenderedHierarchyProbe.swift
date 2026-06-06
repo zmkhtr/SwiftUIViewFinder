@@ -9,12 +9,19 @@ import UIKit
 @MainActor
 private protocol ViewFinderDebugDataProvider: AnyObject {
     func viewFinderDebugData() -> [_ViewDebug.Data]
+    @available(iOS 16.0, *)
+    func viewFinderCurrentRoots() -> [ComponentNode]
 }
 
 extension _UIHostingView: ViewFinderDebugDataProvider {
     fileprivate func viewFinderDebugData() -> [_ViewDebug.Data] {
         _renderForTest(interval: 0)
         return _viewDebugData()
+    }
+
+    @available(iOS 16.0, *)
+    fileprivate func viewFinderCurrentRoots() -> [ComponentNode] {
+        MountedRootValueInspector.currentRoots(in: rootView)
     }
 }
 
@@ -106,6 +113,11 @@ public enum PrivateRenderedHierarchyProbe {
             return MountedHostingViewReflector.components(in: hostingView)
         }
         return ReflectedRenderedGraphParser.parse(debugData)
+    }
+
+    static func currentRoots(fromUnknownHostingView hostingView: UIView) -> [ComponentNode] {
+        guard #available(iOS 16.0, *) else { return [] }
+        return (hostingView as? any ViewFinderDebugDataProvider)?.viewFinderCurrentRoots() ?? []
     }
 
     private static func capture<Content: View>(

@@ -25,6 +25,17 @@ private struct RenderedProbeCard: View {
     }
 }
 
+private struct RenderedProbeTabs: View {
+    var body: some View {
+        TabView {
+            RenderedProbeHeader()
+                .tabItem { Text("Header") }
+            RenderedProbeCard()
+                .tabItem { Text("Card") }
+        }
+    }
+}
+
 @MainActor
 @Test
 func privateRenderedGraphContainsApplicationTypeNames() {
@@ -73,6 +84,16 @@ func capturesFromMountedHostingViewWithUnknownContentType() {
 
     let mountedNames = MountedHostingViewReflector.applicationTypes(in: hostingView)
     #expect(mountedNames.contains { $0.contains("RenderedProbeScreen") })
+}
+
+@MainActor
+@Test
+func recoversCurrentRootAndImmediateTabChildren() {
+    let hostingView = _UIHostingView(rootView: RenderedProbeTabs())
+    let roots = PrivateRenderedHierarchyProbe.currentRoots(fromUnknownHostingView: hostingView)
+
+    #expect(roots.first?.name == "RenderedProbeTabs")
+    #expect(roots.first?.children.map(\.name) == ["RenderedProbeHeader", "RenderedProbeCard"])
 }
 
 @Test
