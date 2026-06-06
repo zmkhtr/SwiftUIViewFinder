@@ -52,16 +52,14 @@ final class GlobalViewFinderMonitor {
     private func refresh() {
         guard mode != .off,
               let sourceWindow = frontmostApplicationWindow(),
-              let hostingView = frontmostHostingView(in: sourceWindow),
+              let (hostingView, components) = frontmostRenderedComponents(in: sourceWindow),
               let overlayHost = overlayHost(for: sourceWindow) else {
             overlayManager.hide()
             return
         }
 
-        let components = PrivateRenderedHierarchyProbe
-            .reflectedComponents(fromUnknownHostingView: hostingView)
-            .map { converted($0, from: hostingView, to: overlayHost) }
-        let visibleComponents = components
+        let convertedComponents = components.map { converted($0, from: hostingView, to: overlayHost) }
+        let visibleComponents = convertedComponents
             .flatMap(\.flattened)
             .filter { component in
                 guard let frame = component.frame else { return false }
@@ -70,7 +68,7 @@ final class GlobalViewFinderMonitor {
                     && frame.intersects(overlayHost.bounds)
             }
 
-        logIfChanged(components)
+        logIfChanged(convertedComponents)
         if mode.includesOverlay, !visibleComponents.isEmpty {
             overlayManager.show(components: visibleComponents, relativeTo: overlayHost, style: style)
         } else {
@@ -98,15 +96,23 @@ final class GlobalViewFinderMonitor {
             .last
     }
 
-    private func frontmostHostingView(in window: UIWindow) -> UIView? {
-        window.allDescendantsInFrontToBack()
+    private func frontmostRenderedComponents(in window: UIWindow) -> (UIView, [RenderedComponent])? {
+        let hostingViews = window.allDescendantsInFrontToBack()
             .filter {
                 String(describing: type(of: $0)).contains("HostingView")
                     && $0.isEffectivelyVisible
                     && $0.bounds.width > 8
                     && $0.bounds.height > 8
             }
-            .first
+
+        for hostingView in hostingViews {
+            let components = PrivateRenderedHierarchyProbe
+                .reflectedComponents(fromUnknownHostingView: hostingView)
+            if !components.isEmpty {
+                return (hostingView, components)
+            }
+        }
+        return nil
     }
 
     private func overlayHost(for sourceWindow: UIWindow) -> UIView? {
