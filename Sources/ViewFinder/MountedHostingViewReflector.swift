@@ -36,7 +36,6 @@ enum MountedHostingViewReflector {
             if value is any View, isApplicationType(type) {
                 result.append(type)
             }
-            appendNestedApplicationTypes(in: type, to: &result)
             for child in mirror.children {
                 walk(child.value, depth: depth + 1)
             }
@@ -49,25 +48,6 @@ enum MountedHostingViewReflector {
             deduplicated.append(type)
         }
         return deduplicated
-    }
-
-    private static func appendNestedApplicationTypes(in text: String, to result: inout [String]) {
-        let normalized = text.replacingOccurrences(
-            of: #"\.\(unknown context at \$[0-9a-f]+\)"#,
-            with: "",
-            options: .regularExpression
-        )
-        let pattern = #"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*"#
-        guard let expression = try? NSRegularExpression(pattern: pattern) else { return }
-
-        let range = NSRange(normalized.startIndex..<normalized.endIndex, in: normalized)
-        for match in expression.matches(in: normalized, range: range) {
-            guard let matchRange = Range(match.range, in: normalized) else { continue }
-            let candidate = String(normalized[matchRange])
-            if isApplicationType(candidate) {
-                result.append(candidate)
-            }
-        }
     }
 
     private static func isApplicationType(_ type: String) -> Bool {
