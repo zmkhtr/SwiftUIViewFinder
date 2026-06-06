@@ -22,8 +22,7 @@ existing view?
 
 Meaningful application component names survive in:
 
-1. A concrete root `View` value, where custom bodies can be evaluated and
-   framework wrapper storage can be reflected.
+1. A concrete root `View` value, where stored view values can be reflected.
 2. SwiftUI's private rendered debug graph on iOS 26.2, after enabling all private
    `_ViewDebug` properties before graph creation.
 
@@ -85,9 +84,13 @@ Run `Scripts/inspect-swiftui-symbols.sh` to repeat the SDK inspection.
 Method:
 
 1. Accept one concrete root `View`.
-2. Evaluate application-defined `body` properties.
-3. Reflect stored children inside SwiftUI framework wrappers.
-4. Filter framework types such as `VStack`, `TupleView`, and `ModifiedContent`.
+2. Reflect stored children inside SwiftUI framework wrappers.
+3. Filter framework types such as `VStack`, `TupleView`, and `ModifiedContent`.
+
+Early versions also evaluated application-defined `body` properties by default.
+This is unsafe: a body reading `@EnvironmentObject` outside SwiftUI's mounted
+environment traps with a missing object fatal error. Body evaluation is now
+disabled by default and available only through the explicit `.unsafe` policy.
 
 Result:
 
@@ -98,8 +101,8 @@ HomeScreen
 └─ UserCardView
 ```
 
-Confidence: **high for simple eager view composition**, lower for lazy,
-type-erased, stateful, or environment-dependent content.
+Confidence: **high for component values already stored in the supplied root**.
+Components created only by unevaluated bodies are omitted by the safe default.
 
 This path satisfies the one-integration-point requirement, but it does not map
 components to rendered pixels.

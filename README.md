@@ -17,7 +17,7 @@ Two console-first inspection paths are implemented:
 
 | Path | Result | Important limitation |
 | --- | --- | --- |
-| Root-value inspection | Recovers nested custom component names on iOS 15+ from one root integration point | Reconstructs a supplied view value, not the live rendered graph |
+| Root-value inspection | Safely recovers custom component values stored at one root integration point | Does not execute application bodies by default |
 | Private rendered-graph probe | Recovered nested custom names, graph structure, positions, and sizes on iOS 26.2 | Private ABI; the enabling symbol is absent on iOS 15.5 |
 | UIKit fallback | Produces the UIKit view hierarchy | Usually exposes hosting/container classes, not nested SwiftUI components |
 
@@ -75,12 +75,20 @@ struct MyApp: App {
 }
 ```
 
-Or inspect a concrete root directly:
+Or safely inspect stored values reachable from a concrete root:
 
 ```swift
 ViewFinder.enable(mode: .logs)
 let report = ViewFinder.inspect(RootView())
 print(report.formatted())
+```
+
+Unsafe body evaluation remains available only for controlled research views
+that do not depend on SwiftUI-managed environment or dynamic properties:
+
+```swift
+let options = HierarchyOptions(bodyEvaluationPolicy: .unsafe)
+ViewFinder.inspect(ResearchRootView(), options: options)
 ```
 
 Global activation APIs exist, but AppDelegate-only activation cannot yet recover
@@ -128,8 +136,9 @@ Do not build the inspector panel until those tasks work on real app hosts.
 - Private APIs and Swift ABI symbols may change without notice.
 - iOS 15.5 does not expose the private `_ViewDebug.properties` setter used by
   the current rendered-graph prototype.
-- Root-value inspection manually evaluates custom `body` properties. Lazy,
-  erased, environment-dependent, and state-dependent content can be missing.
+- Safe root-value inspection does not execute custom `body` properties, because
+  doing so outside SwiftUI can trap on `@EnvironmentObject` and other dynamic
+  properties. Deeper descendants can therefore be missing.
 - The private graph payload tested so far contains no source file or line field.
 - Overlay mode names are reserved API surface only; no overlay is rendered yet.
 - UIKit activation alone currently yields only a UIKit hierarchy.

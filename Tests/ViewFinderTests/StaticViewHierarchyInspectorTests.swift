@@ -32,7 +32,9 @@ private struct TestAvatarView: View {
 @MainActor
 @Test
 func recoversApplicationViewNamesFromRootValue() {
-    let report = StaticViewHierarchyInspector().inspect(TestHomeScreen())
+    let report = StaticViewHierarchyInspector(
+        options: HierarchyOptions(bodyEvaluationPolicy: .unsafe)
+    ).inspect(TestHomeScreen())
     let names = report.roots.flatMap(\.flattenedNames)
 
     #expect(names.contains("TestHomeScreen"))
@@ -44,12 +46,33 @@ func recoversApplicationViewNamesFromRootValue() {
 @MainActor
 @Test
 func filtersFrameworkWrapperTypesByDefault() {
-    let report = StaticViewHierarchyInspector().inspect(TestHomeScreen())
+    let report = StaticViewHierarchyInspector(
+        options: HierarchyOptions(bodyEvaluationPolicy: .unsafe)
+    ).inspect(TestHomeScreen())
     let names = report.roots.flatMap(\.flattenedNames)
 
     #expect(!names.contains("VStack"))
     #expect(!names.contains("TupleView"))
     #expect(!names.contains("ModifiedContent"))
+}
+
+private final class MissingEnvironmentModel: ObservableObject {}
+
+private struct EnvironmentDependentView: View {
+    @EnvironmentObject private var model: MissingEnvironmentModel
+
+    var body: some View {
+        Text(String(describing: model))
+    }
+}
+
+@MainActor
+@Test
+func doesNotEvaluateEnvironmentDependentBodyByDefault() {
+    let report = StaticViewHierarchyInspector().inspect(EnvironmentDependentView())
+
+    #expect(report.roots.flatMap(\.flattenedNames) == ["EnvironmentDependentView"])
+    #expect(report.warnings.contains { $0.contains("were not evaluated") })
 }
 
 @MainActor

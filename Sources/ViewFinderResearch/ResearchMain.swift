@@ -33,7 +33,10 @@ private enum ViewFinderResearch {
     @MainActor
     static func main() {
         ViewFinder.enable(mode: .logs)
-        let report = ViewFinder.inspect(HomeScreen())
+        let report = ViewFinder.inspect(
+            HomeScreen(),
+            options: HierarchyOptions(bodyEvaluationPolicy: .unsafe)
+        )
 
         guard report.roots.first?.flattenedNames.contains("ProfileHeaderView") == true else {
             fatalError("The prototype did not recover expected application component names.")

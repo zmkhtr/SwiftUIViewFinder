@@ -3,8 +3,9 @@ import SwiftUI
 public extension View {
     /// Enables the Phase 2 console inspector from a single SwiftUI root.
     ///
-    /// The modifier evaluates and reflects the root value once when it appears.
-    /// It does not map nodes to pixels and does not traverse SwiftUI's live graph.
+    /// The modifier safely reflects stored view values once when it appears. It
+    /// does not execute application bodies, map nodes to pixels, or traverse
+    /// SwiftUI's live graph.
     func enableViewFinder(
         mode: InspectionMode = .overlayAndLogs,
         overlayStyle: OverlayStyle = .compact

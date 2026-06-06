@@ -5,8 +5,7 @@
 ```text
 Concrete Root View
   -> StaticViewHierarchyInspector
-  -> evaluate application body values
-  -> reflect framework wrapper storage
+  -> reflect stored view values
   -> filter framework types
   -> ComponentNode tree
 
@@ -44,11 +43,14 @@ RootView()
 ## Root-Value Inspector
 
 `StaticViewHierarchyInspector` treats application-defined types as meaningful
-component nodes. For those nodes it evaluates `body`. For framework nodes it
-reflects stored values until it finds more values conforming to `View`.
+component nodes and reflects stored values until it finds more values conforming
+to `View`.
 
 Framework wrappers are collapsed by default. This produces a useful conceptual
-component hierarchy, but it is not a rendered hierarchy.
+component hierarchy, but it is not a rendered hierarchy. Application `body`
+evaluation is disabled by default because evaluating a body outside SwiftUI's
+mounted environment can trap on `@EnvironmentObject` and other dynamic
+properties.
 
 ## Private Rendered-Graph Probe
 

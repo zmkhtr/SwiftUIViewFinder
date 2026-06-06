@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Inspects a concrete root `View` value by evaluating application view bodies
-/// and reflecting framework wrapper storage.
+/// Inspects a concrete root `View` value by reflecting stored view values.
 ///
 /// This does not inspect SwiftUI's live rendered graph. It is a feasibility
-/// prototype that can recover many application component names from one root
-/// integration point.
+/// prototype that can recover application component names reachable through
+/// stored view values. Executing application bodies is disabled by default
+/// because doing so outside SwiftUI's mounted environment is unsafe.
 @MainActor
 public struct StaticViewHierarchyInspector {
     public let options: HierarchyOptions
@@ -23,7 +23,7 @@ public struct StaticViewHierarchyInspector {
             roots: roots,
             warnings: [
                 "This tree comes from a root View value, not SwiftUI's live rendered graph.",
-                "Lazy, erased, environment-dependent, and state-dependent descendants may be missing.",
+                bodyEvaluationWarning,
             ]
         )
     }
@@ -47,7 +47,9 @@ public struct StaticViewHierarchyInspector {
         }
 
         let children: [RawNode]
-        if meaningful && V.Body.self != Never.self {
+        if meaningful,
+           options.bodyEvaluationPolicy == .unsafe,
+           V.Body.self != Never.self {
             children = [inspectView(view.body, origin: .evaluatedBody, depth: depth + 1)]
         } else {
             children = inspectReflectedStorage(of: view, depth: depth + 1)
@@ -138,6 +140,15 @@ public struct StaticViewHierarchyInspector {
         let beforeGeneric = qualifiedName.split(separator: "<", maxSplits: 1).first.map(String.init)
             ?? qualifiedName
         return beforeGeneric.split(separator: ".").last.map(String.init) ?? beforeGeneric
+    }
+
+    private var bodyEvaluationWarning: String {
+        switch options.bodyEvaluationPolicy {
+        case .disabled:
+            return "Application view bodies were not evaluated. Descendants that exist only inside body are omitted."
+        case .unsafe:
+            return "Unsafe body evaluation was enabled. Dynamic-property-dependent descendants may trap or be inaccurate."
+        }
     }
 
     private struct RawNode {
