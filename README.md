@@ -1,0 +1,146 @@
+# SwiftUIViewFinder
+
+SwiftUIViewFinder is a research-first Swift package exploring a React DevTools-style
+component inspector for SwiftUI. Consumers import the package as:
+
+```swift
+import ViewFinder
+```
+
+The project is intentionally at the **Phase 2 decision gate**. It proves that
+meaningful application component names can be recovered, but it does not yet
+ship overlays, selection, or an inspector panel.
+
+## What Works Today
+
+Two console-first inspection paths are implemented:
+
+| Path | Result | Important limitation |
+| --- | --- | --- |
+| Root-value inspection | Recovers nested custom component names on iOS 15+ from one root integration point | Reconstructs a supplied view value, not the live rendered graph |
+| Private rendered-graph probe | Recovered nested custom names, graph structure, positions, and sizes on iOS 26.2 | Private ABI; the enabling symbol is absent on iOS 15.5 |
+| UIKit fallback | Produces the UIKit view hierarchy | Usually exposes hosting/container classes, not nested SwiftUI components |
+
+Validated root-value output:
+
+```text
+HomeScreen
+├─ ProfileHeaderView
+│  └─ AvatarView
+└─ UserCardView
+```
+
+Validated private graph names on an iOS 26.2 simulator:
+
+```text
+RenderedProbeScreen
+RenderedProbeHeader
+RenderedProbeCard
+```
+
+See [Docs/Research.md](Docs/Research.md) for the evidence and limitations.
+
+## Installation
+
+Swift Package Manager:
+
+```swift
+dependencies: [
+    .package(
+        url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
+        from: "0.1.0"
+    )
+]
+```
+
+Then add the `ViewFinder` product to the app target.
+
+## Quick Start
+
+The current SwiftUI modifier performs one console inspection when the root
+appears:
+
+```swift
+import SwiftUI
+import ViewFinder
+
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            RootView()
+                .enableViewFinder(mode: .logs)
+        }
+    }
+}
+```
+
+Or inspect a concrete root directly:
+
+```swift
+ViewFinder.enable(mode: .logs)
+let report = ViewFinder.inspect(RootView())
+print(report.formatted())
+```
+
+Global activation APIs exist, but AppDelegate-only activation cannot yet recover
+an already-running live SwiftUI graph:
+
+```swift
+ViewFinder.enable()
+ViewFinder.setMode(.logs)
+ViewFinder.disable()
+```
+
+## Run The Prototype
+
+```bash
+swift run ViewFinderResearch
+swift test
+```
+
+The private rendered-graph test requires an iOS simulator:
+
+```bash
+xcodebuild test \
+  -scheme SwiftUIViewFinder-Package \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+```
+
+## Current Decision Gate
+
+**Proceed to Phase 3, with constraints.**
+
+The central hypothesis is validated: custom SwiftUI component names survive in
+SwiftUI's private rendered debug graph on at least iOS 26.2. The next work should
+focus on:
+
+1. Parsing `_ViewDebug` JSON into a filtered component tree.
+2. Accessing the live hosting graph without knowing its generic `Content` type.
+3. Testing the private path across iOS versions.
+4. Correlating graph nodes and frames before building any overlay UI.
+
+Do not build the inspector panel until those tasks work on real app hosts.
+
+## Limitations
+
+- This is debug-only research software.
+- Private APIs and Swift ABI symbols may change without notice.
+- iOS 15.5 does not expose the private `_ViewDebug.properties` setter used by
+  the current rendered-graph prototype.
+- Root-value inspection manually evaluates custom `body` properties. Lazy,
+  erased, environment-dependent, and state-dependent content can be missing.
+- The private graph payload tested so far contains no source file or line field.
+- Overlay mode names are reserved API surface only; no overlay is rendered yet.
+- UIKit activation alone currently yields only a UIKit hierarchy.
+
+## Documentation
+
+- [Research findings](Docs/Research.md)
+- [Architecture](Docs/Architecture.md)
+- [Troubleshooting](Docs/Troubleshooting.md)
+- [Contributing](CONTRIBUTING.md)
+
+## License
+
+MIT

@@ -1,0 +1,81 @@
+import SwiftUI
+import Testing
+@testable import ViewFinder
+
+private struct TestHomeScreen: View {
+    var body: some View {
+        VStack {
+            TestProfileHeaderView()
+            TestUserCardView()
+        }
+    }
+}
+
+private struct TestProfileHeaderView: View {
+    var body: some View {
+        TestAvatarView()
+    }
+}
+
+private struct TestUserCardView: View {
+    var body: some View {
+        Text("User")
+    }
+}
+
+private struct TestAvatarView: View {
+    var body: some View {
+        Image(systemName: "person.circle")
+    }
+}
+
+@MainActor
+@Test
+func recoversApplicationViewNamesFromRootValue() {
+    let report = StaticViewHierarchyInspector().inspect(TestHomeScreen())
+    let names = report.roots.flatMap(\.flattenedNames)
+
+    #expect(names.contains("TestHomeScreen"))
+    #expect(names.contains("TestProfileHeaderView"))
+    #expect(names.contains("TestUserCardView"))
+    #expect(names.contains("TestAvatarView"))
+}
+
+@MainActor
+@Test
+func filtersFrameworkWrapperTypesByDefault() {
+    let report = StaticViewHierarchyInspector().inspect(TestHomeScreen())
+    let names = report.roots.flatMap(\.flattenedNames)
+
+    #expect(!names.contains("VStack"))
+    #expect(!names.contains("TupleView"))
+    #expect(!names.contains("ModifiedContent"))
+}
+
+@MainActor
+@Test
+func disabledGlobalEntryPointDoesNoInspection() {
+    ViewFinder.disable()
+
+    let report = ViewFinder.inspect(TestHomeScreen())
+
+    #expect(report.roots.isEmpty)
+}
+
+@Test
+func formatsComponentTree() {
+    let tree = ComponentNode(
+        name: "HomeScreen",
+        qualifiedName: "Demo.HomeScreen",
+        origin: .rootValue,
+        children: [
+            ComponentNode(
+                name: "AvatarView",
+                qualifiedName: "Demo.AvatarView",
+                origin: .evaluatedBody
+            )
+        ]
+    )
+
+    #expect(tree.formattedTree() == "HomeScreen\n└─ AvatarView")
+}
