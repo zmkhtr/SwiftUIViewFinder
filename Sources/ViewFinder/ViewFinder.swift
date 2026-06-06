@@ -16,6 +16,9 @@ public enum ViewFinder {
     /// recover a SwiftUI hierarchy unless a concrete root view or private
     /// rendered-graph probe is provided.
     public static func enable(mode: InspectionMode = .overlayAndLogs) {
+        #if canImport(UIKit)
+        _ = PrivateRenderedHierarchyProbe.prepareForGraphCreation()
+        #endif
         self.mode = mode
     }
 
