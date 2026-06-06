@@ -73,18 +73,18 @@ final class MountedViewInspector {
             return
         }
 
-        guard let hostingView = hostingView(near: locator) else {
+        guard locator.window != nil else {
             if mode.includesLogs, lastHierarchyText != "(graph unavailable)" {
-                print("[ViewFinder] Mounted SwiftUI hosting view is unavailable.")
-                NSLog("[ViewFinder] Mounted SwiftUI hosting view is unavailable.")
-                logger.warning("Mounted SwiftUI hosting view is unavailable.")
+                print("[ViewFinder] Mounted overlay host is unavailable.")
+                NSLog("[ViewFinder] Mounted overlay host is unavailable.")
+                logger.warning("Mounted overlay host is unavailable.")
                 lastHierarchyText = "(graph unavailable)"
             }
             overlayManager.showStatus("ViewFinder: host unavailable", relativeTo: locator)
             return
         }
 
-        let roots = rootComponents(frame: hostingView.bounds)
+        let roots = rootComponents(frame: locator.bounds)
         let components = deduplicated(roots.flatMap(\.flattened) + markedComponents)
 
         let renderedTree = roots.map { $0.formattedTree() }.joined(separator: "\n")
@@ -109,28 +109,13 @@ final class MountedViewInspector {
 
         if mode.includesOverlay {
             if components.contains(where: { $0.frame != nil }) {
-                overlayManager.show(components: components, relativeTo: hostingView, style: style)
+                overlayManager.show(components: components, relativeTo: locator, style: style)
             } else {
-                overlayManager.showStatus("ViewFinder: no component frames", relativeTo: hostingView)
+                overlayManager.showStatus("ViewFinder: no component frames", relativeTo: locator)
             }
         } else {
             overlayManager.hide()
         }
-    }
-
-    private func hostingView(near view: UIView) -> UIView? {
-        var candidate = view.superview
-        while let current = candidate {
-            if String(describing: type(of: current)).contains("HostingView") {
-                return current
-            }
-            candidate = current.superview
-        }
-
-        return view.window?
-            .allDescendants()
-            .filter { String(describing: type(of: $0)).contains("HostingView") }
-            .max { $0.bounds.width * $0.bounds.height < $1.bounds.width * $1.bounds.height }
     }
 
     private func deduplicated(_ components: [RenderedComponent]) -> [RenderedComponent] {
@@ -162,9 +147,9 @@ struct ViewFinderLocator: UIViewRepresentable {
     let markedComponents: [RenderedComponent]
 
     func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
+        let view = PassThroughOverlayView(frame: .zero)
         view.isUserInteractionEnabled = false
-        view.alpha = 0
+        view.backgroundColor = .clear
         MountedViewInspector.shared.startMonitoring(
             from: view,
             mode: mode,
@@ -194,19 +179,19 @@ struct ViewFinderLocator: UIViewRepresentable {
 private final class ViewFinderOverlayManager {
     private weak var overlayView: UIView?
 
-    func show(components: [RenderedComponent], relativeTo hostingView: UIView, style: OverlayStyle) {
+    func show(components: [RenderedComponent], relativeTo overlayHost: UIView, style: OverlayStyle) {
         hide()
 
-        let container = PassThroughOverlayView(frame: hostingView.bounds)
+        let container = PassThroughOverlayView(frame: overlayHost.bounds)
         container.backgroundColor = .clear
         container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         container.accessibilityIdentifier = "ViewFinderOverlay"
-        let safeArea = hostingView.bounds.inset(by: hostingView.safeAreaInsets)
+        let safeArea = safeAreaFrame(relativeTo: overlayHost)
 
         let visibleComponents = components
             .compactMap { component -> (RenderedComponent, CGRect)? in
                 guard let frame = component.frame else { return nil }
-                guard frame.intersects(hostingView.bounds), frame.width > 8, frame.height > 8 else {
+                guard frame.intersects(overlayHost.bounds), frame.width > 8, frame.height > 8 else {
                     return nil
                 }
                 return (component, frame)
@@ -241,13 +226,12 @@ private final class ViewFinderOverlayManager {
             container.addSubview(border)
         }
 
-        hostingView.addSubview(container)
+        overlayHost.addSubview(container)
         overlayView = container
     }
 
     func showStatus(_ text: String, relativeTo view: UIView) {
         hide()
-        guard let window = view.window else { return }
 
         let label = UILabel()
         label.text = text
@@ -257,10 +241,11 @@ private final class ViewFinderOverlayManager {
         label.layer.cornerRadius = 6
         label.layer.masksToBounds = true
         label.textAlignment = .center
-        label.frame = CGRect(x: 12, y: window.safeAreaInsets.top + 8, width: 220, height: 28)
+        let safeArea = safeAreaFrame(relativeTo: view)
+        label.frame = CGRect(x: safeArea.minX + 12, y: safeArea.minY + 8, width: 220, height: 28)
         label.isUserInteractionEnabled = false
         label.accessibilityIdentifier = "ViewFinderOverlayStatus"
-        window.addSubview(label)
+        view.addSubview(label)
         overlayView = label
     }
 
@@ -284,6 +269,14 @@ private final class ViewFinderOverlayManager {
         )
         return CGPoint(x: xInHost - componentFrame.minX, y: yInHost - componentFrame.minY)
     }
+
+    private func safeAreaFrame(relativeTo view: UIView) -> CGRect {
+        guard let window = view.window else {
+            return view.bounds
+        }
+        return view.convert(window.safeAreaLayoutGuide.layoutFrame, from: window)
+            .intersection(view.bounds)
+    }
 }
 
 private final class PassThroughOverlayView: UIView {
@@ -296,9 +289,4 @@ private final class PassThroughOverlayView: UIView {
     }
 }
 
-private extension UIView {
-    func allDescendants() -> [UIView] {
-        subviews + subviews.flatMap { $0.allDescendants() }
-    }
-}
 #endif

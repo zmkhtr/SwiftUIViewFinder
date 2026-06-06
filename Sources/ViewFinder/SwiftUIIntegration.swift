@@ -23,12 +23,14 @@ public extension View {
     /// Use this on custom component instances when SwiftUI's private rendered
     /// graph erases their boundary, such as children inside `TabView`.
     func viewFinderComponent(
+        isActive: Bool = true,
         fileID: StaticString = #fileID,
         line: UInt = #line
     ) -> some View {
         modifier(
             ViewFinderComponentModifier(
                 componentType: Self.self,
+                isActive: isActive,
                 sourceLocation: "\(fileID):\(line)"
             )
         )
@@ -51,7 +53,7 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
             .onPreferenceChange(ViewFinderComponentPreferenceKey.self) {
                 markedComponents = $0
             }
-            .background {
+            .overlay {
                 #if canImport(UIKit)
                 ViewFinderLocator(
                     mode: mode,
@@ -59,7 +61,7 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
                     currentRoots: currentRoots,
                     markedComponents: markedComponents
                 )
-                    .frame(width: 0, height: 0)
+                    .allowsHitTesting(false)
                 #endif
             }
             .onAppear {
@@ -77,6 +79,7 @@ private enum ViewFinderCoordinateSpace {
 
 private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
     let componentType: Component.Type
+    let isActive: Bool
     let sourceLocation: String
 
     func body(content: Content) -> some View {
@@ -84,7 +87,7 @@ private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
             GeometryReader { proxy in
                 Color.clear.preference(
                     key: ViewFinderComponentPreferenceKey.self,
-                    value: [
+                    value: isActive ? [
                         RenderedComponent(
                             name: readableName,
                             qualifiedName: qualifiedName,
@@ -92,7 +95,7 @@ private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
                             sourceLocation: sourceLocation,
                             children: []
                         )
-                    ]
+                    ] : []
                 )
             }
         }
