@@ -88,9 +88,31 @@ enum RenderedGraphParser {
                   let type = attribute["type"] as? String else {
                 return nil
             }
-            return isApplicationType(type) ? type : nil
+            if isApplicationType(type) {
+                return type
+            }
+            return nestedApplicationType(in: type)
         }
         return candidates.first
+    }
+
+    private static func nestedApplicationType(in type: String) -> String? {
+        let pattern = #"[A-Za-z_][A-Za-z0-9_]*\.(?:\(unknown context at \$[0-9a-f]+\)\.)?[A-Za-z_][A-Za-z0-9_]*"#
+        guard let expression = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+
+        let range = NSRange(type.startIndex..<type.endIndex, in: type)
+        for match in expression.matches(in: type, range: range) {
+            guard let matchRange = Range(match.range, in: type) else {
+                continue
+            }
+            let candidate = String(type[matchRange])
+            if isApplicationType(candidate) {
+                return candidate
+            }
+        }
+        return nil
     }
 
     private static func isApplicationType(_ type: String) -> Bool {

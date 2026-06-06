@@ -67,4 +67,27 @@ func capturesFromMountedHostingViewWithUnknownContentType() {
     #expect(snapshot != nil)
     #expect(components.flatMap(\.flattened).contains { $0.name == "RenderedProbeScreen" })
 }
+
+@Test
+func parsesApplicationTypeNestedInsideFrameworkWrapper() {
+    let json = """
+    [{
+      "properties": [
+        {"attribute": {
+          "type": "SwiftUI.ModifiedContent<Khatm.HomeScreen, SwiftUI._PaddingLayout>",
+          "readableType": "ModifiedContent<HomeScreen, _PaddingLayout>",
+          "flags": 0
+        }},
+        {"attribute": {"type": "__C.CGPoint", "readableType": "CGPoint", "value": [12, 24]}},
+        {"attribute": {"type": "__C.CGSize", "readableType": "CGSize", "value": [100, 80]}}
+      ],
+      "children": []
+    }]
+    """
+
+    let components = RenderedGraphParser.parse(json: json)
+
+    #expect(components.first?.name == "HomeScreen")
+    #expect(components.first?.frame == CGRect(x: 12, y: 24, width: 100, height: 80))
+}
 #endif
