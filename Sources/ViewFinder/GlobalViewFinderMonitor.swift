@@ -14,6 +14,7 @@ final class GlobalViewFinderMonitor {
     private var overlayWindow: PassThroughOverlayWindow?
     private var lastHierarchyText: String?
     private var lastMountedTypesText: String?
+    private var lastMountedRootsText: String?
 
     func start(mode: InspectionMode, style: OverlayStyle) {
         self.mode = mode
@@ -133,6 +134,11 @@ final class GlobalViewFinderMonitor {
     private func activeComponent(in hostingView: UIView, window: UIWindow) -> RenderedComponent? {
         guard let selectedIndex = selectedTabIndex(in: window) else { return nil }
         let roots = PrivateRenderedHierarchyProbe.currentRoots(fromUnknownHostingView: hostingView)
+        let rootsText = roots.map { $0.formattedTree() }.joined(separator: "\n")
+        if mode.includesLogs, rootsText != lastMountedRootsText {
+            lastMountedRootsText = rootsText
+            print("[ViewFinder] Current mounted root values:\n\(rootsText)")
+        }
         guard let root = roots.last, root.children.indices.contains(selectedIndex) else {
             return nil
         }
