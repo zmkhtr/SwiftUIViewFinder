@@ -1,18 +1,14 @@
 import SwiftUI
 
 public extension View {
-    /// Enables mounted rendered-graph logging and component overlays.
+    /// Enables safe mounted component logging and overlays.
     ///
-    /// The modifier does not execute application view bodies. On supported
-    /// SwiftUI runtimes it inspects the mounted private rendered graph.
+    /// The modifier does not execute application view bodies or use SwiftUI's
+    /// private rendered-graph serializer.
     func enableViewFinder(
         mode: InspectionMode = .overlayAndLogs,
         overlayStyle: OverlayStyle = .compact
     ) -> some View {
-        #if canImport(UIKit)
-        _ = PrivateRenderedHierarchyProbe.prepareForGraphCreation()
-        #endif
-
         return modifier(
             ViewFinderRootModifier(
                 contentForInspection: self,

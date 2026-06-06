@@ -81,9 +81,9 @@ struct MyApp: App {
 }
 ```
 
-Calling `ViewFinder.enable(...)` from `App.init()` enables SwiftUI's private
-debug properties before the root graph is created. The root modifier then
-locates the mounted host and renders overlays.
+Calling `ViewFinder.enable(...)` from `App.init()` configures ViewFinder before
+the root graph is created. The root modifier then locates the mounted host and
+renders overlays without invoking SwiftUI's private debug serializer.
 
 SwiftUI can erase custom component boundaries, especially inside `TabView` and
 conditional content. Mark important component instances for exact live names
@@ -158,9 +158,9 @@ Do not build the inspector panel until those tasks work on real app hosts.
 ## Limitations
 
 - This is debug-only research software.
-- Private APIs and Swift ABI symbols may change without notice.
-- iOS 15.5 does not expose the private `_ViewDebug.properties` setter used by
-  the current rendered-graph prototype.
+- The optional research probe uses private APIs and may change without notice.
+- The production overlay path does not call `_ViewDebug.serializedData`, which
+  is unsafe on graphs containing some Foundation objects.
 - Safe root-value inspection does not execute custom `body` properties, because
   doing so outside SwiftUI can trap on `@EnvironmentObject` and other dynamic
   properties. Deeper descendants can therefore be missing.

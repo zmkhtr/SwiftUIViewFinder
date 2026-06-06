@@ -12,13 +12,8 @@ public enum ViewFinder {
 
     /// Enables ViewFinder globally.
     ///
-    /// Phase 2 note: global activation configures console behavior. It cannot
-    /// recover a SwiftUI hierarchy unless a concrete root view or private
-    /// rendered-graph probe is provided.
+    /// Global activation configures console and overlay behavior.
     public static func enable(mode: InspectionMode = .overlayAndLogs) {
-        #if canImport(UIKit)
-        _ = PrivateRenderedHierarchyProbe.prepareForGraphCreation()
-        #endif
         self.mode = mode
     }
 

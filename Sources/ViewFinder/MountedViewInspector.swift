@@ -44,7 +44,6 @@ final class MountedViewInspector {
             return
         }
 
-        _ = PrivateRenderedHierarchyProbe.prepareForGraphCreation()
         refreshTimer?.invalidate()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 0.75, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -74,22 +73,18 @@ final class MountedViewInspector {
             return
         }
 
-        guard let hostingView = hostingView(near: locator),
-              let snapshot = PrivateRenderedHierarchyProbe.capture(fromUnknownHostingView: hostingView) else {
+        guard let hostingView = hostingView(near: locator) else {
             if mode.includesLogs, lastHierarchyText != "(graph unavailable)" {
-                print("[ViewFinder] Mounted SwiftUI hosting view debug data is unavailable.")
-                NSLog("[ViewFinder] Mounted SwiftUI hosting view debug data is unavailable.")
-                logger.warning("Mounted SwiftUI hosting view debug data is unavailable.")
+                print("[ViewFinder] Mounted SwiftUI hosting view is unavailable.")
+                NSLog("[ViewFinder] Mounted SwiftUI hosting view is unavailable.")
+                logger.warning("Mounted SwiftUI hosting view is unavailable.")
                 lastHierarchyText = "(graph unavailable)"
             }
-            overlayManager.showStatus("ViewFinder: graph unavailable", relativeTo: locator)
+            overlayManager.showStatus("ViewFinder: host unavailable", relativeTo: locator)
             return
         }
 
-        let roots = RenderedComponentReconciler.reconcile(
-            renderedRoots: RenderedGraphParser.parse(json: snapshot.json),
-            currentRoots: currentRoots
-        )
+        let roots = rootComponents(frame: hostingView.bounds)
         let components = deduplicated(roots.flatMap(\.flattened) + markedComponents)
 
         let renderedTree = roots.map { $0.formattedTree() }.joined(separator: "\n")
@@ -146,6 +141,17 @@ final class MountedViewInspector {
             result.append(component)
         }
         return result
+    }
+
+    private func rootComponents(frame: CGRect) -> [RenderedComponent] {
+        currentRoots.map {
+            RenderedComponent(
+                name: $0.name,
+                qualifiedName: $0.qualifiedName,
+                frame: frame,
+                children: []
+            )
+        }
     }
 }
 
