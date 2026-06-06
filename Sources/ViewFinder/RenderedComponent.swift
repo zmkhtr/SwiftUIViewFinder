@@ -191,7 +191,9 @@ enum RenderedComponentReconciler {
 
 enum ReflectedRenderedGraphParser {
     static func parse(_ value: Any) -> [RenderedComponent] {
-        collectionElements(of: value).flatMap { parseNode($0, inheritedFrame: nil) }
+        let components = collectionElements(of: value).flatMap { parseNode($0, inheritedFrame: nil) }
+        let preferred = components.flatMap { preferredModuleComponents(in: $0) }
+        return preferred.isEmpty ? components : preferred
     }
 
     private static func parseNode(_ value: Any, inheritedFrame: CGRect?) -> [RenderedComponent] {
@@ -265,11 +267,13 @@ enum ReflectedRenderedGraphParser {
             return nil
         }
         let range = NSRange(type.startIndex..<type.endIndex, in: type)
-        return expression.matches(in: type, range: range).compactMap { match -> String? in
+        let candidates = expression.matches(in: type, range: range).compactMap { match -> String? in
             guard let range = Range(match.range, in: type) else { return nil }
             let candidate = String(type[range])
             return isApplicationType(candidate) ? candidate : nil
-        }.first
+        }
+        return candidates.first(where: { $0.hasPrefix("\(preferredModuleName).") })
+            ?? candidates.first
     }
 
     private static func isApplicationType(_ type: String) -> Bool {
@@ -287,5 +291,26 @@ enum ReflectedRenderedGraphParser {
         let beforeGeneric = withoutContext.split(separator: "<", maxSplits: 1).first.map(String.init)
             ?? withoutContext
         return beforeGeneric.split(separator: ".").last.map(String.init) ?? beforeGeneric
+    }
+
+    private static func preferredModuleComponents(in component: RenderedComponent) -> [RenderedComponent] {
+        let children = component.children.flatMap { preferredModuleComponents(in: $0) }
+        if component.qualifiedName.hasPrefix("\(preferredModuleName).") {
+            return [
+                RenderedComponent(
+                    name: component.name,
+                    qualifiedName: component.qualifiedName,
+                    frame: component.frame,
+                    sourceLocation: component.sourceLocation,
+                    children: children
+                )
+            ]
+        }
+        return children
+    }
+
+    private static var preferredModuleName: String {
+        let executable = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String
+        return executable?.replacingOccurrences(of: " ", with: "_") ?? ""
     }
 }
