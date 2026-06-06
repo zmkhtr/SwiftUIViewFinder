@@ -36,6 +36,7 @@ enum MountedHostingViewReflector {
             if isApplicationType(type), isLikelyComponentType(type) {
                 result.append(type)
             }
+            appendPreferredNestedComponentTypes(in: type, to: &result)
             for child in mirror.children {
                 walk(child.value, depth: depth + 1)
             }
@@ -58,6 +59,27 @@ enum MountedHostingViewReflector {
         return !frameworkPrefixes.contains { type.hasPrefix($0) }
     }
 
+    private static func appendPreferredNestedComponentTypes(in text: String, to result: inout [String]) {
+        let module = preferredModuleName
+        guard !module.isEmpty else { return }
+        let normalized = text.replacingOccurrences(
+            of: #"\.\(unknown context at \$[0-9a-f]+\)"#,
+            with: "",
+            options: .regularExpression
+        )
+        let pattern = #"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*"#
+        guard let expression = try? NSRegularExpression(pattern: pattern) else { return }
+        let range = NSRange(normalized.startIndex..<normalized.endIndex, in: normalized)
+
+        for match in expression.matches(in: normalized, range: range) {
+            guard let matchRange = Range(match.range, in: normalized) else { continue }
+            let candidate = String(normalized[matchRange])
+            if candidate.hasPrefix("\(module)."), isLikelyComponentType(candidate) {
+                result.append(candidate)
+            }
+        }
+    }
+
     private static func isLikelyComponentType(_ type: String) -> Bool {
         let name = readableName(from: type)
         let suffixes = [
@@ -73,6 +95,11 @@ enum MountedHostingViewReflector {
             options: .regularExpression
         )
         return withoutContext.split(separator: ".").last.map(String.init) ?? withoutContext
+    }
+
+    private static var preferredModuleName: String {
+        let executable = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String
+        return executable?.replacingOccurrences(of: " ", with: "_") ?? ""
     }
 }
 #endif

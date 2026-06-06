@@ -109,8 +109,10 @@ final class GlobalViewFinderMonitor {
             }
 
         let candidates = hostingViews.compactMap { hostingView -> (UIView, [RenderedComponent])? in
-            let components = PrivateRenderedHierarchyProbe
+            let rendered = PrivateRenderedHierarchyProbe
                 .reflectedComponents(fromUnknownHostingView: hostingView)
+            let mounted = MountedHostingViewReflector.components(in: hostingView)
+            let components = mounted.isEmpty ? rendered : mounted
             return components.isEmpty ? nil : (hostingView, components)
         }
         let candidateText = candidates.enumerated().map { index, candidate in
