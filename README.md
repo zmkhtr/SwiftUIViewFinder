@@ -7,9 +7,9 @@ component inspector for SwiftUI. Consumers import the package as:
 import ViewFinder
 ```
 
-The project is intentionally at the **Phase 2 decision gate**. It proves that
-meaningful application component names can be recovered, but it does not yet
-ship overlays, selection, or an inspector panel.
+The project is an early private-runtime prototype. It can recover meaningful
+application component names and display basic non-interactive overlays on
+supported SwiftUI runtimes.
 
 ## What Works Today
 
@@ -20,6 +20,7 @@ Two console-first inspection paths are implemented:
 | Root-value inspection | Safely recovers custom component values stored at one root integration point | Does not execute application bodies by default |
 | Private rendered-graph probe | Recovered nested custom names, graph structure, positions, and sizes on iOS 26.2 | Private ABI; the enabling symbol is absent on iOS 15.5 |
 | UIKit fallback | Produces the UIKit view hierarchy | Usually exposes hosting/container classes, not nested SwiftUI components |
+| Mounted overlay | Labels recovered application components on the live screen | Basic, non-interactive, and private-runtime dependent |
 
 Validated root-value output:
 
@@ -126,7 +127,7 @@ focus on:
 1. Parsing `_ViewDebug` JSON into a filtered component tree.
 2. Accessing the live hosting graph without knowing its generic `Content` type.
 3. Testing the private path across iOS versions.
-4. Correlating graph nodes and frames before building any overlay UI.
+4. Improving frame correlation and overlay filtering.
 
 Do not build the inspector panel until those tasks work on real app hosts.
 
@@ -140,7 +141,7 @@ Do not build the inspector panel until those tasks work on real app hosts.
   doing so outside SwiftUI can trap on `@EnvironmentObject` and other dynamic
   properties. Deeper descendants can therefore be missing.
 - The private graph payload tested so far contains no source file or line field.
-- Overlay mode names are reserved API surface only; no overlay is rendered yet.
+- The current overlay is non-interactive and may contain noisy or overlapping labels.
 - UIKit activation alone currently yields only a UIKit hierarchy.
 
 ## Documentation

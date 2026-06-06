@@ -1,6 +1,7 @@
 #if canImport(UIKit)
 import SwiftUI
 import Testing
+import UIKit
 @testable import ViewFinder
 
 private struct RenderedProbeScreen: View {
@@ -43,5 +44,27 @@ func privateRenderedGraphContainsApplicationTypeNames() {
     } else {
         #expect(typeNames.isEmpty)
     }
+}
+
+@MainActor
+@Test
+func capturesFromMountedHostingViewWithUnknownContentType() {
+    #expect(PrivateRenderedHierarchyProbe.prepareForGraphCreation())
+
+    let hostingView = _UIHostingView(rootView: RenderedProbeScreen())
+    hostingView.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+    let window = UIWindow(frame: hostingView.frame)
+    window.addSubview(hostingView)
+    window.isHidden = false
+    hostingView.layoutIfNeeded()
+    hostingView._renderForTest(interval: 0)
+
+    let snapshot = PrivateRenderedHierarchyProbe.capture(
+        fromUnknownHostingView: hostingView as UIView
+    )
+    let components = RenderedGraphParser.parse(json: snapshot?.json ?? "")
+
+    #expect(snapshot != nil)
+    #expect(components.flatMap(\.flattened).contains { $0.name == "RenderedProbeScreen" })
 }
 #endif

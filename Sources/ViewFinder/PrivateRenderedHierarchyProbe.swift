@@ -72,6 +72,17 @@ public enum PrivateRenderedHierarchyProbe {
         )
     }
 
+    /// Captures debug data from an existing mounted hosting view whose generic
+    /// content type is unknown.
+    public static func capture(fromUnknownHostingView hostingView: UIView) -> RenderedHierarchySnapshot? {
+        guard String(describing: type(of: hostingView)).contains("HostingView") else {
+            return nil
+        }
+
+        let erasedHostingView = unsafeBitCast(hostingView, to: _UIHostingView<AnyView>.self)
+        return capture(from: erasedHostingView)
+    }
+
     private static func capture<Content: View>(
         from hostingView: _UIHostingView<Content>,
         requestedAllProperties: Bool

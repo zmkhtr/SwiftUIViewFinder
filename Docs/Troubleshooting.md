@@ -47,8 +47,10 @@ SwiftUI modifier or the research rendered-graph probe.
 
 ## Overlay Or Inspector Not Appearing
 
-They are not implemented at the Phase 2 decision gate. The `.overlay` and
-`.overlayAndLogs` cases reserve the intended API surface; only log output exists.
+The basic mounted overlay requires a SwiftUI runtime that exposes private
+`_ViewDebug` properties. It works on the tested iOS 26.2 simulator and is not
+available on the tested iOS 15.5 simulator. The inspector panel and selection
+mode are not implemented yet.
 
 ## Multi-Window And SceneDelegate
 

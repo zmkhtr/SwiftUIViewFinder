@@ -1,11 +1,10 @@
 import SwiftUI
 
 public extension View {
-    /// Enables the Phase 2 console inspector from a single SwiftUI root.
+    /// Enables mounted rendered-graph logging and component overlays.
     ///
-    /// The modifier safely reflects stored view values once when it appears. It
-    /// does not execute application bodies, map nodes to pixels, or traverse
-    /// SwiftUI's live graph.
+    /// The modifier does not execute application view bodies. On supported
+    /// SwiftUI runtimes it inspects the mounted private rendered graph.
     func enableViewFinder(
         mode: InspectionMode = .overlayAndLogs,
         overlayStyle: OverlayStyle = .compact
@@ -26,10 +25,18 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
     let overlayStyle: OverlayStyle
 
     func body(content: Content) -> some View {
-        content.onAppear {
-            ViewFinder.enable(mode: mode)
-            ViewFinder.inspect(contentForInspection)
-            _ = overlayStyle
-        }
+        content
+            .background {
+                #if canImport(UIKit)
+                ViewFinderLocator(mode: mode, overlayStyle: overlayStyle)
+                    .frame(width: 0, height: 0)
+                #endif
+            }
+            .onAppear {
+                ViewFinder.enable(mode: mode)
+                if mode.includesLogs {
+                    ViewFinder.inspect(contentForInspection)
+                }
+            }
     }
 }
