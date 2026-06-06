@@ -15,6 +15,7 @@ final class GlobalViewFinderMonitor {
     private var lastHierarchyText: String?
     private var lastMountedTypesText: String?
     private var lastMountedRootsText: String?
+    private var lastCandidateText: String?
 
     func start(mode: InspectionMode, style: OverlayStyle) {
         self.mode = mode
@@ -107,10 +108,21 @@ final class GlobalViewFinderMonitor {
                     && $0.bounds.height > 8
             }
 
-        for hostingView in hostingViews {
-            let renderedComponents = PrivateRenderedHierarchyProbe
+        let candidates = hostingViews.compactMap { hostingView -> (UIView, [RenderedComponent])? in
+            let components = PrivateRenderedHierarchyProbe
                 .reflectedComponents(fromUnknownHostingView: hostingView)
-            if !renderedComponents.isEmpty {
+            return components.isEmpty ? nil : (hostingView, components)
+        }
+        let candidateText = candidates.enumerated().map { index, candidate in
+            let names = candidate.1.flatMap(\.flattened).map(\.name).joined(separator: ", ")
+            return "\(index): \(type(of: candidate.0)) [\(names)]"
+        }.joined(separator: "\n")
+        if mode.includesLogs, candidateText != lastCandidateText {
+            lastCandidateText = candidateText
+            print("[ViewFinder] Visible hosting candidates:\n\(candidateText)")
+        }
+
+        for (hostingView, renderedComponents) in candidates.reversed() {
                 let mountedComponents = MountedHostingViewReflector.components(in: hostingView)
                 let mountedTypes = mountedComponents.map(\.qualifiedName)
                 let mountedText = mountedTypes.joined(separator: "\n")
@@ -126,7 +138,6 @@ final class GlobalViewFinderMonitor {
                             ?? mountedComponents.last
                     )
                 )
-            }
         }
         return nil
     }
