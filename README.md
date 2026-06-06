@@ -58,8 +58,7 @@ Then add the `ViewFinder` product to the app target.
 
 ## Quick Start
 
-The current SwiftUI modifier performs one console inspection when the root
-appears:
+Enable ViewFinder once before SwiftUI creates the app's root graph:
 
 ```swift
 import SwiftUI
@@ -75,20 +74,19 @@ struct MyApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .enableViewFinder(mode: .logs)
         }
     }
 }
 ```
 
 Calling `ViewFinder.enable(...)` from `App.init()` configures ViewFinder before
-the root graph is created. The root modifier then locates the mounted host and
-renders overlays without invoking SwiftUI's private debug serializer.
+the root graph is created. ViewFinder then discovers the foreground mounted
+host globally and follows tabs, navigation pushes, and presented views without
+requiring modifiers on application views.
 
-SwiftUI can erase custom component boundaries, especially inside `TabView` and
-conditional content. Mark important component instances for exact live names
-and frames. Markers also capture the call-site file and line for logs and
-detailed overlays:
+`enableViewFinder(...)` and `viewFinderComponent(...)` remain available as
+optional explicit integration tools. A component marker can supply an exact
+call-site file and line when SwiftUI erases that component boundary:
 
 ```swift
 TabView {
@@ -158,17 +156,15 @@ Do not build the inspector panel until those tasks work on real app hosts.
 ## Limitations
 
 - This is debug-only research software.
-- The optional research probe uses private APIs and may change without notice.
-- The production overlay path does not call `_ViewDebug.serializedData`, which
-  is unsafe on graphs containing some Foundation objects.
+- Global mounted-host discovery uses private SwiftUI APIs and may change without
+  notice.
 - Safe root-value inspection does not execute custom `body` properties, because
   doing so outside SwiftUI can trap on `@EnvironmentObject` and other dynamic
   properties. Deeper descendants can therefore be missing.
 - The private graph payload tested so far contains no source file or line field.
-- Exact component boundaries erased by SwiftUI require `.viewFinderComponent()`
-  on the component instance.
+- Exact source file and line information requires `.viewFinderComponent()` on
+  the component instance.
 - The current overlay is non-interactive and may contain noisy or overlapping labels.
-- UIKit activation alone currently yields only a UIKit hierarchy.
 
 ## Documentation
 

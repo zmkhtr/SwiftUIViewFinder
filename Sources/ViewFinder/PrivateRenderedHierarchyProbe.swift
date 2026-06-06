@@ -6,6 +6,17 @@ import Foundation
 import SwiftUI
 import UIKit
 
+@MainActor
+private protocol ViewFinderDebugDataProvider: AnyObject {
+    func viewFinderDebugData() -> [_ViewDebug.Data]
+}
+
+extension _UIHostingView: ViewFinderDebugDataProvider {
+    fileprivate func viewFinderDebugData() -> [_ViewDebug.Data] {
+        _viewDebugData()
+    }
+}
+
 /// Output from SwiftUI's private rendered-graph debug-data hook.
 public struct RenderedHierarchySnapshot: Sendable {
     /// JSON emitted by SwiftUI's private debug-data serializer.
@@ -73,24 +84,27 @@ public enum PrivateRenderedHierarchyProbe {
         )
     }
 
-    /// Captures debug data from an existing mounted hosting view whose generic
-    /// content type is unknown.
+    /// Captures debug data from an opaque mounted hosting view using protocol
+    /// witness dispatch, preserving its actual generic content specialization.
     public static func capture(fromUnknownHostingView hostingView: UIView) -> RenderedHierarchySnapshot? {
-        guard String(describing: type(of: hostingView)).contains("HostingView") else {
+        guard let debugData = debugData(fromUnknownHostingView: hostingView),
+              let data = _ViewDebug.serializedData(debugData),
+              let json = String(data: data, encoding: .utf8) else {
             return nil
         }
 
-        let erasedHostingView = unsafeBitCast(hostingView, to: _UIHostingView<AnyView>.self)
-        return capture(from: erasedHostingView)
+        return RenderedHierarchySnapshot(
+            json: json,
+            discoveredTypeNames: discoverTypeLikeStrings(in: data),
+            requestedAllProperties: didRequestAllProperties
+        )
     }
 
     static func reflectedComponents(fromUnknownHostingView hostingView: UIView) -> [RenderedComponent] {
-        guard String(describing: type(of: hostingView)).contains("HostingView") else {
-            return []
+        guard let debugData = debugData(fromUnknownHostingView: hostingView) else {
+            return MountedHostingViewReflector.components(in: hostingView)
         }
-
-        let erasedHostingView = unsafeBitCast(hostingView, to: _UIHostingView<AnyView>.self)
-        return ReflectedRenderedGraphParser.parse(erasedHostingView._viewDebugData())
+        return ReflectedRenderedGraphParser.parse(debugData)
     }
 
     private static func capture<Content: View>(
@@ -108,6 +122,10 @@ public enum PrivateRenderedHierarchyProbe {
             discoveredTypeNames: discoverTypeLikeStrings(in: data),
             requestedAllProperties: requestedAllProperties
         )
+    }
+
+    private static func debugData(fromUnknownHostingView hostingView: UIView) -> [_ViewDebug.Data]? {
+        (hostingView as? any ViewFinderDebugDataProvider)?.viewFinderDebugData()
     }
 
     private static func requestSafeViewDebugProperties() -> Bool {

@@ -13,7 +13,6 @@ final class GlobalViewFinderMonitor {
     private var refreshTimer: Timer?
     private var overlayWindow: PassThroughOverlayWindow?
     private var lastHierarchyText: String?
-    private var lastCandidateText: String?
 
     func start(mode: InspectionMode, style: OverlayStyle) {
         self.mode = mode
@@ -100,26 +99,14 @@ final class GlobalViewFinderMonitor {
     }
 
     private func frontmostHostingView(in window: UIWindow) -> UIView? {
-        let candidates = window.allDescendantsInFrontToBack()
+        window.allDescendantsInFrontToBack()
             .filter {
                 String(describing: type(of: $0)).contains("HostingView")
                     && $0.isEffectivelyVisible
                     && $0.bounds.width > 8
                     && $0.bounds.height > 8
             }
-        let candidateText = candidates.enumerated().map { index, view in
-            let names = PrivateRenderedHierarchyProbe
-                .reflectedComponents(fromUnknownHostingView: view)
-                .flatMap(\.flattened)
-                .map(\.name)
-                .joined(separator: ",")
-            return "\(index): \(type(of: view)) \(view.convert(view.bounds, to: window).integral) [\(names)]"
-        }.joined(separator: "\n")
-        if candidateText != lastCandidateText {
-            lastCandidateText = candidateText
-            print("[ViewFinder] Hosting candidates:\n\(candidateText)")
-        }
-        return candidates.first
+            .first
     }
 
     private func overlayHost(for sourceWindow: UIWindow) -> UIView? {
