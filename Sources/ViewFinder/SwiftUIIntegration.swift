@@ -38,5 +38,17 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
                     ViewFinder.inspect(contentForInspection)
                 }
             }
+            .overlay(alignment: .topLeading) {
+                if mode.includesOverlay {
+                    Text("ViewFinder active")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(.pink.opacity(0.9), in: RoundedRectangle(cornerRadius: 5))
+                        .allowsHitTesting(false)
+                        .accessibilityIdentifier("ViewFinderActiveBadge")
+                }
+            }
     }
 }

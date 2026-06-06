@@ -80,6 +80,9 @@ public enum PrivateRenderedHierarchyProbe {
         }
 
         let erasedHostingView = unsafeBitCast(hostingView, to: _UIHostingView<AnyView>.self)
+        erasedHostingView.setNeedsLayout()
+        erasedHostingView.layoutIfNeeded()
+        erasedHostingView._renderForTest(interval: 0)
         return capture(from: erasedHostingView)
     }
 

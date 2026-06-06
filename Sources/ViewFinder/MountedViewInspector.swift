@@ -1,12 +1,14 @@
 #if canImport(UIKit)
 import SwiftUI
 import UIKit
+import os
 
 @MainActor
 final class MountedViewInspector {
     static let shared = MountedViewInspector()
 
     private let overlayManager = ViewFinderOverlayManager()
+    private let logger = Logger(subsystem: "ViewFinder", category: "RenderedGraph")
     private var scheduledGeneration = 0
 
     func scheduleInspection(from locator: UIView, mode: InspectionMode, style: OverlayStyle) {
@@ -28,12 +30,13 @@ final class MountedViewInspector {
     }
 
     private func inspect(from locator: UIView, mode: InspectionMode, style: OverlayStyle) {
-        guard let hostingView = hostingView(above: locator),
+        guard let hostingView = hostingView(near: locator),
               let snapshot = PrivateRenderedHierarchyProbe.capture(fromUnknownHostingView: hostingView) else {
             if mode.includesLogs {
                 print("[ViewFinder] Mounted SwiftUI hosting view debug data is unavailable.")
+                logger.warning("Mounted SwiftUI hosting view debug data is unavailable.")
             }
-            overlayManager.hide()
+            overlayManager.showStatus("ViewFinder: graph unavailable", relativeTo: locator)
             return
         }
 
@@ -43,6 +46,7 @@ final class MountedViewInspector {
         if mode.includesLogs {
             let tree = roots.map { $0.formattedTree() }.joined(separator: "\n")
             print("[ViewFinder] Rendered component hierarchy:\n\n\(tree.isEmpty ? "(no application components found)" : tree)")
+            logger.info("Rendered component hierarchy:\n\(tree.isEmpty ? "(no application components found)" : tree, privacy: .public)")
         }
 
         if mode.includesOverlay {
@@ -52,7 +56,7 @@ final class MountedViewInspector {
         }
     }
 
-    private func hostingView(above view: UIView) -> UIView? {
+    private func hostingView(near view: UIView) -> UIView? {
         var candidate = view.superview
         while let current = candidate {
             if String(describing: type(of: current)).contains("HostingView") {
@@ -60,7 +64,11 @@ final class MountedViewInspector {
             }
             candidate = current.superview
         }
-        return nil
+
+        return view.window?
+            .allDescendants()
+            .filter { String(describing: type(of: $0)).contains("HostingView") }
+            .max { $0.bounds.width * $0.bounds.height < $1.bounds.width * $1.bounds.height }
     }
 }
 
@@ -138,8 +146,33 @@ private final class ViewFinderOverlayManager {
         overlayView = container
     }
 
+    func showStatus(_ text: String, relativeTo view: UIView) {
+        hide()
+        guard let window = view.window else { return }
+
+        let label = UILabel()
+        label.text = text
+        label.font = .monospacedSystemFont(ofSize: 11, weight: .bold)
+        label.textColor = .white
+        label.backgroundColor = UIColor.systemPink.withAlphaComponent(0.92)
+        label.layer.cornerRadius = 6
+        label.layer.masksToBounds = true
+        label.textAlignment = .center
+        label.frame = CGRect(x: 12, y: window.safeAreaInsets.top + 8, width: 220, height: 28)
+        label.isUserInteractionEnabled = false
+        label.accessibilityIdentifier = "ViewFinderOverlayStatus"
+        window.addSubview(label)
+        overlayView = label
+    }
+
     func hide() {
         overlayView?.removeFromSuperview()
+    }
+}
+
+private extension UIView {
+    func allDescendants() -> [UIView] {
+        subviews + subviews.flatMap { $0.allDescendants() }
     }
 }
 #endif
