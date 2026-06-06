@@ -13,6 +13,7 @@ final class GlobalViewFinderMonitor {
     private var refreshTimer: Timer?
     private var overlayWindow: PassThroughOverlayWindow?
     private var lastHierarchyText: String?
+    private var lastMountedTypesText: String?
 
     func start(mode: InspectionMode, style: OverlayStyle) {
         self.mode = mode
@@ -109,6 +110,12 @@ final class GlobalViewFinderMonitor {
             let components = PrivateRenderedHierarchyProbe
                 .reflectedComponents(fromUnknownHostingView: hostingView)
             if !components.isEmpty {
+                let mountedTypes = MountedHostingViewReflector.applicationTypes(in: hostingView)
+                let mountedText = mountedTypes.joined(separator: "\n")
+                if mode.includesLogs, mountedText != lastMountedTypesText {
+                    lastMountedTypesText = mountedText
+                    print("[ViewFinder] Current mounted application types:\n\(mountedText)")
+                }
                 return (hostingView, components)
             }
         }
