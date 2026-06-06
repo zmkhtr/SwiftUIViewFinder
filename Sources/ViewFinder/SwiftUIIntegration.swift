@@ -26,8 +26,16 @@ public extension View {
     ///
     /// Use this on custom component instances when SwiftUI's private rendered
     /// graph erases their boundary, such as children inside `TabView`.
-    func viewFinderComponent() -> some View {
-        modifier(ViewFinderComponentModifier(componentType: Self.self))
+    func viewFinderComponent(
+        fileID: StaticString = #fileID,
+        line: UInt = #line
+    ) -> some View {
+        modifier(
+            ViewFinderComponentModifier(
+                componentType: Self.self,
+                sourceLocation: "\(fileID):\(line)"
+            )
+        )
     }
 }
 
@@ -73,6 +81,7 @@ private enum ViewFinderCoordinateSpace {
 
 private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
     let componentType: Component.Type
+    let sourceLocation: String
 
     func body(content: Content) -> some View {
         content.background {
@@ -84,6 +93,7 @@ private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
                             name: readableName,
                             qualifiedName: qualifiedName,
                             frame: proxy.frame(in: .named(ViewFinderCoordinateSpace.root)),
+                            sourceLocation: sourceLocation,
                             children: []
                         )
                     ]

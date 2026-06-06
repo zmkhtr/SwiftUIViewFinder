@@ -94,7 +94,10 @@ final class MountedViewInspector {
 
         let renderedTree = roots.map { $0.formattedTree() }.joined(separator: "\n")
         let markedTree = markedComponents
-            .map { "\($0.name)\($0.frame.map { " \($0.integral)" } ?? "")" }
+            .map {
+                "\($0.name)\($0.frame.map { " \($0.integral)" } ?? "")"
+                    + ($0.sourceLocation.map { " [\($0)]" } ?? "")
+            }
             .joined(separator: "\n")
         let tree = [renderedTree, markedTree]
             .filter { !$0.isEmpty }
@@ -217,7 +220,7 @@ private final class ViewFinderOverlayManager {
 
             let label = UILabel()
             label.text = style == .detailed
-                ? "\(component.name) \(Int(frame.width))×\(Int(frame.height))"
+                ? detailedLabel(for: component, frame: frame)
                 : component.name
             label.font = .monospacedSystemFont(ofSize: 9, weight: .semibold)
             label.textColor = .white
@@ -256,6 +259,11 @@ private final class ViewFinderOverlayManager {
 
     func hide() {
         overlayView?.removeFromSuperview()
+    }
+
+    private func detailedLabel(for component: RenderedComponent, frame: CGRect) -> String {
+        let source = component.sourceLocation.map { " \($0)" } ?? ""
+        return "\(component.name) \(Int(frame.width))×\(Int(frame.height))\(source)"
     }
 }
 

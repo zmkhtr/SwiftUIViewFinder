@@ -6,17 +6,20 @@ public struct RenderedComponent: Equatable, Sendable {
     public let name: String
     public let qualifiedName: String
     public let frame: CGRect?
+    public let sourceLocation: String?
     public let children: [RenderedComponent]
 
     public init(
         name: String,
         qualifiedName: String,
         frame: CGRect?,
+        sourceLocation: String? = nil,
         children: [RenderedComponent]
     ) {
         self.name = name
         self.qualifiedName = qualifiedName
         self.frame = frame
+        self.sourceLocation = sourceLocation
         self.children = children
     }
 
@@ -31,7 +34,8 @@ public struct RenderedComponent: Equatable, Sendable {
     private func formattedLines(prefix: String, isLast: Bool, isRoot: Bool) -> [String] {
         let marker = isRoot ? "" : (isLast ? "└─ " : "├─ ")
         let frameText = frame.map { " \($0.integral)" } ?? ""
-        let line = prefix + marker + name + frameText
+        let sourceText = sourceLocation.map { " [\($0)]" } ?? ""
+        let line = prefix + marker + name + frameText + sourceText
         let childPrefix = isRoot ? "" : prefix + (isLast ? "   " : "│  ")
 
         return [line] + children.enumerated().flatMap { index, child in
@@ -178,6 +182,7 @@ enum RenderedComponentReconciler {
                 name: currentRoot.name,
                 qualifiedName: currentRoot.qualifiedName,
                 frame: renderedRoot.frame,
+                sourceLocation: renderedRoot.sourceLocation,
                 children: renderedRoot.children
             )
         ]

@@ -87,7 +87,8 @@ locates the mounted host and renders overlays.
 
 SwiftUI can erase custom component boundaries, especially inside `TabView` and
 conditional content. Mark important component instances for exact live names
-and frames:
+and frames. Markers also capture the call-site file and line for logs and
+detailed overlays:
 
 ```swift
 TabView {
