@@ -5,11 +5,13 @@ import SwiftUI
 enum MountedRootValueInspector {
     static func currentRoots<Root: View>(in root: Root) -> [ComponentNode] {
         var visitedValueCount = 0
+        var visitedObjects = Set<ObjectIdentifier>()
         return collectApplicationViews(
             in: root,
             depth: 0,
             includeImmediateBody: true,
-            visitedValueCount: &visitedValueCount
+            visitedValueCount: &visitedValueCount,
+            visitedObjects: &visitedObjects
         )
     }
 
@@ -17,21 +19,26 @@ enum MountedRootValueInspector {
         in value: Any,
         depth: Int,
         includeImmediateBody: Bool,
-        visitedValueCount: inout Int
+        visitedValueCount: inout Int,
+        visitedObjects: inout Set<ObjectIdentifier>
     ) -> [ComponentNode] {
         guard depth < 48, visitedValueCount < 5_000 else { return [] }
         visitedValueCount += 1
 
         let mirror = Mirror(reflecting: value)
-        if mirror.displayStyle == .class {
-            return []
+        if mirror.displayStyle == .class, let object = value as AnyObject? {
+            guard visitedObjects.insert(ObjectIdentifier(object)).inserted else { return [] }
         }
 
         if let view = value as? any View {
             let type = String(reflecting: type(of: view))
             if isApplicationType(type) {
                 let children = includeImmediateBody
-                    ? immediateApplicationChildren(of: view, visitedValueCount: &visitedValueCount)
+                    ? immediateApplicationChildren(
+                        of: view,
+                        visitedValueCount: &visitedValueCount,
+                        visitedObjects: &visitedObjects
+                    )
                     : []
                 return [
                     ComponentNode(
@@ -49,28 +56,36 @@ enum MountedRootValueInspector {
                 in: $0.value,
                 depth: depth + 1,
                 includeImmediateBody: includeImmediateBody,
-                visitedValueCount: &visitedValueCount
+                visitedValueCount: &visitedValueCount,
+                visitedObjects: &visitedObjects
             )
         }
     }
 
     private static func immediateApplicationChildren(
         of view: any View,
-        visitedValueCount: inout Int
+        visitedValueCount: inout Int,
+        visitedObjects: inout Set<ObjectIdentifier>
     ) -> [ComponentNode] {
-        inspectImmediateBody(of: view, visitedValueCount: &visitedValueCount)
+        inspectImmediateBody(
+            of: view,
+            visitedValueCount: &visitedValueCount,
+            visitedObjects: &visitedObjects
+        )
     }
 
     private static func inspectImmediateBody<V: View>(
         of view: V,
-        visitedValueCount: inout Int
+        visitedValueCount: inout Int,
+        visitedObjects: inout Set<ObjectIdentifier>
     ) -> [ComponentNode] {
         guard V.Body.self != Never.self else { return [] }
         return collectApplicationViews(
             in: view.body,
             depth: 0,
             includeImmediateBody: false,
-            visitedValueCount: &visitedValueCount
+            visitedValueCount: &visitedValueCount,
+            visitedObjects: &visitedObjects
         )
     }
 
