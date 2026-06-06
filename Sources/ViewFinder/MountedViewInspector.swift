@@ -197,29 +197,24 @@ private final class ViewFinderOverlayManager {
     func show(components: [RenderedComponent], relativeTo hostingView: UIView, style: OverlayStyle) {
         hide()
 
-        guard let window = hostingView.window else {
-            return
-        }
-
-        let container = UIView(frame: window.bounds)
+        let container = PassThroughOverlayView(frame: hostingView.bounds)
         container.backgroundColor = .clear
-        container.isUserInteractionEnabled = false
         container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         container.accessibilityIdentifier = "ViewFinderOverlay"
+        let safeArea = hostingView.bounds.inset(by: hostingView.safeAreaInsets)
 
         let visibleComponents = components
             .compactMap { component -> (RenderedComponent, CGRect)? in
                 guard let frame = component.frame else { return nil }
-                let converted = hostingView.convert(frame, to: window)
-                guard converted.intersects(window.bounds), converted.width > 8, converted.height > 8 else {
+                guard frame.intersects(hostingView.bounds), frame.width > 8, frame.height > 8 else {
                     return nil
                 }
-                return (component, converted)
+                return (component, frame)
             }
             .prefix(40)
 
         for (component, frame) in visibleComponents {
-            let border = UIView(frame: frame)
+            let border = PassThroughOverlayView(frame: frame)
             border.layer.borderColor = UIColor.systemPink.withAlphaComponent(0.8).cgColor
             border.layer.borderWidth = 1
             border.backgroundColor = UIColor.systemPink.withAlphaComponent(0.04)
@@ -235,12 +230,18 @@ private final class ViewFinderOverlayManager {
             label.sizeToFit()
             label.frame.size.width += 6
             label.frame.size.height += 2
-            label.frame.origin = CGPoint(x: 0, y: 0)
+            label.frame.size.width = min(label.frame.width, safeArea.width)
+            label.frame.origin = labelOrigin(
+                labelSize: label.frame.size,
+                componentFrame: frame,
+                safeArea: safeArea
+            )
+            label.isUserInteractionEnabled = false
             border.addSubview(label)
             container.addSubview(border)
         }
 
-        window.addSubview(container)
+        hostingView.addSubview(container)
         overlayView = container
     }
 
@@ -270,6 +271,28 @@ private final class ViewFinderOverlayManager {
     private func detailedLabel(for component: RenderedComponent, frame: CGRect) -> String {
         let source = component.sourceLocation.map { " \($0)" } ?? ""
         return "\(component.name) \(Int(frame.width))×\(Int(frame.height))\(source)"
+    }
+
+    private func labelOrigin(labelSize: CGSize, componentFrame: CGRect, safeArea: CGRect) -> CGPoint {
+        let xInHost = min(
+            max(componentFrame.minX + 2, safeArea.minX + 2),
+            safeArea.maxX - labelSize.width - 2
+        )
+        let yInHost = min(
+            max(componentFrame.minY + 2, safeArea.minY + 2),
+            safeArea.maxY - labelSize.height - 2
+        )
+        return CGPoint(x: xInHost - componentFrame.minX, y: yInHost - componentFrame.minY)
+    }
+}
+
+private final class PassThroughOverlayView: UIView {
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        false
+    }
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        nil
     }
 }
 
