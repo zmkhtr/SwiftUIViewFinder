@@ -176,7 +176,7 @@ struct ViewFinderLocator: UIViewRepresentable {
 }
 
 @MainActor
-private final class ViewFinderOverlayManager {
+final class ViewFinderOverlayManager {
     private weak var overlayView: UIView?
 
     func show(components: [RenderedComponent], relativeTo overlayHost: UIView, style: OverlayStyle) {
@@ -279,7 +279,7 @@ private final class ViewFinderOverlayManager {
     }
 }
 
-private final class PassThroughOverlayView: UIView {
+final class PassThroughOverlayView: UIView {
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
         false
     }

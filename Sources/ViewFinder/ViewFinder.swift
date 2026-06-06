@@ -13,18 +13,30 @@ public enum ViewFinder {
     /// Enables ViewFinder globally.
     ///
     /// Global activation configures console and overlay behavior.
-    public static func enable(mode: InspectionMode = .overlayAndLogs) {
+    public static func enable(
+        mode: InspectionMode = .overlayAndLogs,
+        overlayStyle: OverlayStyle = .compact
+    ) {
         self.mode = mode
+        #if canImport(UIKit)
+        GlobalViewFinderMonitor.shared.start(mode: mode, style: overlayStyle)
+        #endif
     }
 
     /// Disables all ViewFinder work.
     public static func disable() {
         mode = .off
+        #if canImport(UIKit)
+        GlobalViewFinderMonitor.shared.stop()
+        #endif
     }
 
     /// Changes the active inspection mode.
     public static func setMode(_ mode: InspectionMode) {
         self.mode = mode
+        #if canImport(UIKit)
+        GlobalViewFinderMonitor.shared.start(mode: mode, style: .compact)
+        #endif
     }
 
     /// Inspects a concrete SwiftUI root value and optionally prints the result.

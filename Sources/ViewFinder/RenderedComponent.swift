@@ -188,3 +188,105 @@ enum RenderedComponentReconciler {
         ]
     }
 }
+
+enum ReflectedRenderedGraphParser {
+    static func parse(_ value: Any) -> [RenderedComponent] {
+        collectionElements(of: value).flatMap { parseNode($0, inheritedFrame: nil) }
+    }
+
+    private static func parseNode(_ value: Any, inheritedFrame: CGRect?) -> [RenderedComponent] {
+        let fields = Dictionary(
+            uniqueKeysWithValues: Mirror(reflecting: value).children.compactMap { child in
+                child.label.map { ($0, child.value) }
+            }
+        )
+        guard let properties = fields["properties"] ?? fields["data"],
+              let childrenValue = fields["children"] ?? fields["childData"] else {
+            return collectionElements(of: value).flatMap { parseNode($0, inheritedFrame: inheritedFrame) }
+        }
+
+        let attributes = propertyValues(from: properties)
+        let position = attributes["position"] as? CGPoint
+        let size = attributes["size"] as? CGSize
+        let frame = position.flatMap { position in
+            size.map { CGRect(origin: position, size: $0) }
+        } ?? inheritedFrame
+        let children = collectionElements(of: childrenValue)
+            .flatMap { parseNode($0, inheritedFrame: frame) }
+
+        guard let type = attributes["type"] as? String,
+              let applicationType = applicationType(in: type) else {
+            return children
+        }
+
+        let name = readableName(from: applicationType)
+        return [
+            RenderedComponent(
+                name: name,
+                qualifiedName: applicationType,
+                frame: frame,
+                children: children.filter { $0.name != name }
+            )
+        ]
+    }
+
+    private static func propertyValues(from value: Any) -> [String: Any] {
+        var result: [String: Any] = [:]
+        for entry in collectionElements(of: value) {
+            let pair = Array(Mirror(reflecting: entry).children)
+            guard pair.count == 2 else { continue }
+            let reflectedKey = String(reflecting: pair[0].value)
+            let key = reflectedKey.split(separator: ".").last.map(String.init) ?? reflectedKey
+            let propertyValue = unwrapAny(pair[1].value)
+            result[key] = key == "type" ? String(reflecting: propertyValue) : propertyValue
+        }
+        return result
+    }
+
+    private static func collectionElements(of value: Any) -> [Any] {
+        Array(Mirror(reflecting: value).children.map(\.value))
+    }
+
+    private static func unwrapAny(_ value: Any) -> Any {
+        let mirror = Mirror(reflecting: value)
+        guard String(reflecting: mirror.subjectType) == "Any",
+              let child = mirror.children.first else {
+            return value
+        }
+        return child.value
+    }
+
+    private static func applicationType(in type: String) -> String? {
+        if isApplicationType(type) {
+            return type
+        }
+
+        let pattern = #"[A-Za-z_][A-Za-z0-9_]*\.(?:\(unknown context at \$[0-9a-f]+\)\.)?[A-Za-z_][A-Za-z0-9_]*"#
+        guard let expression = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+        let range = NSRange(type.startIndex..<type.endIndex, in: type)
+        return expression.matches(in: type, range: range).compactMap { match -> String? in
+            guard let range = Range(match.range, in: type) else { return nil }
+            let candidate = String(type[range])
+            return isApplicationType(candidate) ? candidate : nil
+        }.first
+    }
+
+    private static func isApplicationType(_ type: String) -> Bool {
+        !HierarchyOptions.defaultFrameworkModulePrefixes.contains { type.hasPrefix($0) }
+            && !type.hasPrefix("__C.")
+            && !type.hasPrefix("AttributeGraph.")
+    }
+
+    private static func readableName(from qualifiedName: String) -> String {
+        let withoutContext = qualifiedName.replacingOccurrences(
+            of: #"\.\(unknown context at \$[0-9a-f]+\)"#,
+            with: "",
+            options: .regularExpression
+        )
+        let beforeGeneric = withoutContext.split(separator: "<", maxSplits: 1).first.map(String.init)
+            ?? withoutContext
+        return beforeGeneric.split(separator: ".").last.map(String.init) ?? beforeGeneric
+    }
+}

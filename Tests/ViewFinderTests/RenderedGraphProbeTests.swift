@@ -62,10 +62,14 @@ func capturesFromMountedHostingViewWithUnknownContentType() {
     let snapshot = PrivateRenderedHierarchyProbe.capture(
         fromUnknownHostingView: hostingView as UIView
     )
+    let reflectedComponents = PrivateRenderedHierarchyProbe.reflectedComponents(
+        fromUnknownHostingView: hostingView
+    )
     let components = RenderedGraphParser.parse(json: snapshot?.json ?? "")
 
     #expect(snapshot != nil)
     #expect(components.flatMap(\.flattened).contains { $0.name == "RenderedProbeScreen" })
+    #expect(reflectedComponents.flatMap(\.flattened).contains { $0.name == "RenderedProbeScreen" })
 }
 
 @Test

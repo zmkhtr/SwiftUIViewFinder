@@ -84,6 +84,15 @@ public enum PrivateRenderedHierarchyProbe {
         return capture(from: erasedHostingView)
     }
 
+    static func reflectedComponents(fromUnknownHostingView hostingView: UIView) -> [RenderedComponent] {
+        guard String(describing: type(of: hostingView)).contains("HostingView") else {
+            return []
+        }
+
+        let erasedHostingView = unsafeBitCast(hostingView, to: _UIHostingView<AnyView>.self)
+        return ReflectedRenderedGraphParser.parse(erasedHostingView._viewDebugData())
+    }
+
     private static func capture<Content: View>(
         from hostingView: _UIHostingView<Content>,
         requestedAllProperties: Bool
@@ -150,5 +159,6 @@ public enum PrivateRenderedHierarchyProbe {
             }
         }
     }
+
 }
 #endif
