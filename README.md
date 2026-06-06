@@ -67,6 +67,11 @@ import ViewFinder
 
 @main
 struct MyApp: App {
+    init() {
+        // Required before WindowGroup creation for rendered component frames.
+        ViewFinder.enable(mode: .overlayAndLogs)
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -75,6 +80,10 @@ struct MyApp: App {
     }
 }
 ```
+
+Calling `ViewFinder.enable(...)` from `App.init()` enables SwiftUI's private
+debug properties before the root graph is created. The root modifier then
+locates the mounted host and renders overlays.
 
 Or safely inspect stored values reachable from a concrete root:
 
