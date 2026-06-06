@@ -9,33 +9,64 @@ final class MountedViewInspector {
 
     private let overlayManager = ViewFinderOverlayManager()
     private let logger = Logger(subsystem: "ViewFinder", category: "RenderedGraph")
-    private var scheduledGeneration = 0
+    private weak var locator: UIView?
+    private var mode: InspectionMode = .off
+    private var style: OverlayStyle = .compact
+    private var refreshTimer: Timer?
+    private var lastHierarchyText: String?
 
-    func scheduleInspection(from locator: UIView, mode: InspectionMode, style: OverlayStyle) {
+    func startMonitoring(from locator: UIView, mode: InspectionMode, style: OverlayStyle) {
+        if self.locator === locator,
+           self.mode == mode,
+           self.style == style,
+           refreshTimer != nil {
+            return
+        }
+
+        self.locator = locator
+        self.mode = mode
+        self.style = style
+
         guard mode != .off else {
-            overlayManager.hide()
+            stopMonitoring(from: locator)
             return
         }
 
         _ = PrivateRenderedHierarchyProbe.prepareForGraphCreation()
-        scheduledGeneration += 1
-        let generation = scheduledGeneration
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self, weak locator] in
-            guard let self, let locator, generation == self.scheduledGeneration else {
-                return
+        refreshTimer?.invalidate()
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 0.75, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refresh()
             }
-            self.inspect(from: locator, mode: mode, style: style)
+        }
+        refreshTimer?.tolerance = 0.15
+
+        DispatchQueue.main.async { [weak self] in
+            self?.refresh()
         }
     }
 
-    private func inspect(from locator: UIView, mode: InspectionMode, style: OverlayStyle) {
+    func stopMonitoring(from locator: UIView) {
+        guard self.locator === locator else { return }
+        refreshTimer?.invalidate()
+        refreshTimer = nil
+        self.locator = nil
+        lastHierarchyText = nil
+        overlayManager.hide()
+    }
+
+    private func refresh() {
+        guard let locator, mode != .off else {
+            return
+        }
+
         guard let hostingView = hostingView(near: locator),
               let snapshot = PrivateRenderedHierarchyProbe.capture(fromUnknownHostingView: hostingView) else {
-            if mode.includesLogs {
+            if mode.includesLogs, lastHierarchyText != "(graph unavailable)" {
                 print("[ViewFinder] Mounted SwiftUI hosting view debug data is unavailable.")
                 NSLog("[ViewFinder] Mounted SwiftUI hosting view debug data is unavailable.")
                 logger.warning("Mounted SwiftUI hosting view debug data is unavailable.")
+                lastHierarchyText = "(graph unavailable)"
             }
             overlayManager.showStatus("ViewFinder: graph unavailable", relativeTo: locator)
             return
@@ -44,8 +75,8 @@ final class MountedViewInspector {
         let roots = RenderedGraphParser.parse(json: snapshot.json)
         let components = roots.flatMap(\.flattened)
 
-        if mode.includesLogs {
-            let tree = roots.map { $0.formattedTree() }.joined(separator: "\n")
+        let tree = roots.map { $0.formattedTree() }.joined(separator: "\n")
+        if mode.includesLogs, tree != lastHierarchyText {
             print("[ViewFinder] Rendered component hierarchy:\n\n\(tree.isEmpty ? "(no application components found)" : tree)")
             NSLog(
                 "[ViewFinder] Rendered component hierarchy:\n\n%@",
@@ -53,6 +84,7 @@ final class MountedViewInspector {
             )
             logger.info("Rendered component hierarchy:\n\(tree.isEmpty ? "(no application components found)" : tree, privacy: .public)")
         }
+        lastHierarchyText = tree
 
         if mode.includesOverlay {
             if components.contains(where: { $0.frame != nil }) {
@@ -89,7 +121,7 @@ struct ViewFinderLocator: UIViewRepresentable {
         let view = UIView(frame: .zero)
         view.isUserInteractionEnabled = false
         view.alpha = 0
-        MountedViewInspector.shared.scheduleInspection(
+        MountedViewInspector.shared.startMonitoring(
             from: view,
             mode: mode,
             style: overlayStyle
@@ -98,11 +130,15 @@ struct ViewFinderLocator: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        MountedViewInspector.shared.scheduleInspection(
+        MountedViewInspector.shared.startMonitoring(
             from: uiView,
             mode: mode,
             style: overlayStyle
         )
+    }
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: ()) {
+        MountedViewInspector.shared.stopMonitoring(from: uiView)
     }
 }
 
