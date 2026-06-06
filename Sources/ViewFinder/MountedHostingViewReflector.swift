@@ -33,7 +33,7 @@ enum MountedHostingViewReflector {
             }
 
             let type = String(reflecting: type(of: value))
-            if value is any View, isApplicationType(type) {
+            if isApplicationType(type), isLikelyComponentType(type) {
                 result.append(type)
             }
             for child in mirror.children {
@@ -56,6 +56,14 @@ enum MountedHostingViewReflector {
             "CoreGraphics.", "UIKit.", "__C.", "AttributeGraph.", "ViewFinder.",
         ]
         return !frameworkPrefixes.contains { type.hasPrefix($0) }
+    }
+
+    private static func isLikelyComponentType(_ type: String) -> Bool {
+        let name = readableName(from: type)
+        let suffixes = [
+            "View", "Screen", "Section", "Card", "Row", "Header", "Footer", "Button",
+        ]
+        return suffixes.contains { name.hasSuffix($0) }
     }
 
     private static func readableName(from qualifiedName: String) -> String {

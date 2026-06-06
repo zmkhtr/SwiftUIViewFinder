@@ -70,6 +70,9 @@ func capturesFromMountedHostingViewWithUnknownContentType() {
     #expect(snapshot != nil)
     #expect(names.contains("RenderedProbeScreen"))
     #expect(names.contains("RenderedProbeHeader"))
+
+    let mountedNames = MountedHostingViewReflector.applicationTypes(in: hostingView)
+    #expect(mountedNames.contains { $0.contains("RenderedProbeScreen") })
 }
 
 @Test

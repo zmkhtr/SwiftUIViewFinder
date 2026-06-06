@@ -107,19 +107,46 @@ final class GlobalViewFinderMonitor {
             }
 
         for hostingView in hostingViews {
-            let components = PrivateRenderedHierarchyProbe
+            let renderedComponents = PrivateRenderedHierarchyProbe
                 .reflectedComponents(fromUnknownHostingView: hostingView)
-            if !components.isEmpty {
-                let mountedTypes = MountedHostingViewReflector.applicationTypes(in: hostingView)
+            if !renderedComponents.isEmpty {
+                let mountedComponents = MountedHostingViewReflector.components(in: hostingView)
+                let mountedTypes = mountedComponents.map(\.qualifiedName)
                 let mountedText = mountedTypes.joined(separator: "\n")
                 if mode.includesLogs, mountedText != lastMountedTypesText {
                     lastMountedTypesText = mountedText
                     print("[ViewFinder] Current mounted application types:\n\(mountedText)")
                 }
-                return (hostingView, components)
+                return (
+                    hostingView,
+                    replacingStaleRoot(in: renderedComponents, with: mountedComponents.last)
+                )
             }
         }
         return nil
+    }
+
+    private func replacingStaleRoot(
+        in renderedComponents: [RenderedComponent],
+        with currentComponent: RenderedComponent?
+    ) -> [RenderedComponent] {
+        guard renderedComponents.count == 1,
+              let renderedRoot = renderedComponents.first,
+              let currentComponent,
+              !renderedRoot.flattened.contains(where: {
+                  $0.qualifiedName == currentComponent.qualifiedName
+              }) else {
+            return renderedComponents
+        }
+
+        return [
+            RenderedComponent(
+                name: currentComponent.name,
+                qualifiedName: currentComponent.qualifiedName,
+                frame: renderedRoot.frame,
+                children: renderedRoot.children
+            )
+        ]
     }
 
     private func overlayHost(for sourceWindow: UIWindow) -> UIView? {
