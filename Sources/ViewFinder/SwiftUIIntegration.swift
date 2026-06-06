@@ -9,7 +9,11 @@ public extension View {
         mode: InspectionMode = .overlayAndLogs,
         overlayStyle: OverlayStyle = .compact
     ) -> some View {
-        modifier(
+        #if canImport(UIKit)
+        _ = PrivateRenderedHierarchyProbe.prepareForGraphCreation()
+        #endif
+
+        return modifier(
             ViewFinderRootModifier(
                 contentForInspection: self,
                 mode: mode,

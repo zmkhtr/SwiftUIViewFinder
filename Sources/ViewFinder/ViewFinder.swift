@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 import os
 
 /// Global entry point for the ViewFinder research prototype.
@@ -42,6 +43,7 @@ public enum ViewFinder {
         if mode.includesLogs {
             let formatted = report.formatted()
             print("[ViewFinder] Root-value component hierarchy:\n\n\(formatted)")
+            NSLog("[ViewFinder] Root-value component hierarchy:\n\n%@", formatted)
             logger.info("Root-value component hierarchy:\n\(formatted, privacy: .public)")
         }
         return report

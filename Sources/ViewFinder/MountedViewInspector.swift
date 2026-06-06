@@ -34,6 +34,7 @@ final class MountedViewInspector {
               let snapshot = PrivateRenderedHierarchyProbe.capture(fromUnknownHostingView: hostingView) else {
             if mode.includesLogs {
                 print("[ViewFinder] Mounted SwiftUI hosting view debug data is unavailable.")
+                NSLog("[ViewFinder] Mounted SwiftUI hosting view debug data is unavailable.")
                 logger.warning("Mounted SwiftUI hosting view debug data is unavailable.")
             }
             overlayManager.showStatus("ViewFinder: graph unavailable", relativeTo: locator)
@@ -46,11 +47,19 @@ final class MountedViewInspector {
         if mode.includesLogs {
             let tree = roots.map { $0.formattedTree() }.joined(separator: "\n")
             print("[ViewFinder] Rendered component hierarchy:\n\n\(tree.isEmpty ? "(no application components found)" : tree)")
+            NSLog(
+                "[ViewFinder] Rendered component hierarchy:\n\n%@",
+                tree.isEmpty ? "(no application components found)" : tree
+            )
             logger.info("Rendered component hierarchy:\n\(tree.isEmpty ? "(no application components found)" : tree, privacy: .public)")
         }
 
         if mode.includesOverlay {
-            overlayManager.show(components: components, relativeTo: hostingView, style: style)
+            if components.contains(where: { $0.frame != nil }) {
+                overlayManager.show(components: components, relativeTo: hostingView, style: style)
+            } else {
+                overlayManager.showStatus("ViewFinder: no component frames", relativeTo: hostingView)
+            }
         } else {
             overlayManager.hide()
         }
