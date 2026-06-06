@@ -15,17 +15,20 @@ final class MountedViewInspector {
     private var refreshTimer: Timer?
     private var lastHierarchyText: String?
     private var currentRoots: [ComponentNode] = []
+    private var markedComponents: [RenderedComponent] = []
 
     func startMonitoring(
         from locator: UIView,
         mode: InspectionMode,
         style: OverlayStyle,
-        currentRoots: [ComponentNode]
+        currentRoots: [ComponentNode],
+        markedComponents: [RenderedComponent]
     ) {
         if self.locator === locator,
            self.mode == mode,
            self.style == style,
            self.currentRoots == currentRoots,
+           self.markedComponents == markedComponents,
            refreshTimer != nil {
             return
         }
@@ -34,6 +37,7 @@ final class MountedViewInspector {
         self.mode = mode
         self.style = style
         self.currentRoots = currentRoots
+        self.markedComponents = markedComponents
 
         guard mode != .off else {
             stopMonitoring(from: locator)
@@ -61,6 +65,7 @@ final class MountedViewInspector {
         self.locator = nil
         lastHierarchyText = nil
         currentRoots = []
+        markedComponents = []
         overlayManager.hide()
     }
 
@@ -85,9 +90,15 @@ final class MountedViewInspector {
             renderedRoots: RenderedGraphParser.parse(json: snapshot.json),
             currentRoots: currentRoots
         )
-        let components = roots.flatMap(\.flattened)
+        let components = deduplicated(roots.flatMap(\.flattened) + markedComponents)
 
-        let tree = roots.map { $0.formattedTree() }.joined(separator: "\n")
+        let renderedTree = roots.map { $0.formattedTree() }.joined(separator: "\n")
+        let markedTree = markedComponents
+            .map { "\($0.name)\($0.frame.map { " \($0.integral)" } ?? "")" }
+            .joined(separator: "\n")
+        let tree = [renderedTree, markedTree]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
         if mode.includesLogs, tree != lastHierarchyText {
             print("[ViewFinder] Rendered component hierarchy:\n\n\(tree.isEmpty ? "(no application components found)" : tree)")
             NSLog(
@@ -123,12 +134,23 @@ final class MountedViewInspector {
             .filter { String(describing: type(of: $0)).contains("HostingView") }
             .max { $0.bounds.width * $0.bounds.height < $1.bounds.width * $1.bounds.height }
     }
+
+    private func deduplicated(_ components: [RenderedComponent]) -> [RenderedComponent] {
+        var result: [RenderedComponent] = []
+        for component in components where !result.contains(where: {
+            $0.qualifiedName == component.qualifiedName && $0.frame == component.frame
+        }) {
+            result.append(component)
+        }
+        return result
+    }
 }
 
 struct ViewFinderLocator: UIViewRepresentable {
     let mode: InspectionMode
     let overlayStyle: OverlayStyle
     let currentRoots: [ComponentNode]
+    let markedComponents: [RenderedComponent]
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
@@ -138,7 +160,8 @@ struct ViewFinderLocator: UIViewRepresentable {
             from: view,
             mode: mode,
             style: overlayStyle,
-            currentRoots: currentRoots
+            currentRoots: currentRoots,
+            markedComponents: markedComponents
         )
         return view
     }
@@ -148,7 +171,8 @@ struct ViewFinderLocator: UIViewRepresentable {
             from: uiView,
             mode: mode,
             style: overlayStyle,
-            currentRoots: currentRoots
+            currentRoots: currentRoots,
+            markedComponents: markedComponents
         )
     }
 

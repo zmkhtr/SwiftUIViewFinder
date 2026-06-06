@@ -115,4 +115,32 @@ func replacesStaleRenderedRootWithCurrentSafeRoot() {
     #expect(components.first?.qualifiedName == "Khatm.ContentView")
     #expect(components.first?.frame == frame)
 }
+
+@Test
+func preservesRenderedChildrenWhenReplacingStaleRoot() {
+    let child = RenderedComponent(
+        name: "HomeScreen",
+        qualifiedName: "Khatm.HomeScreen",
+        frame: CGRect(x: 0, y: 0, width: 390, height: 700),
+        children: []
+    )
+    let rendered = RenderedComponent(
+        name: "OnboardingScreen",
+        qualifiedName: "Khatm.OnboardingScreen",
+        frame: child.frame,
+        children: [child]
+    )
+    let current = ComponentNode(
+        name: "ContentView",
+        qualifiedName: "Khatm.ContentView",
+        origin: .rootValue
+    )
+
+    let components = RenderedComponentReconciler.reconcile(
+        renderedRoots: [rendered],
+        currentRoots: [current]
+    )
+
+    #expect(components.first?.children == [child])
+}
 #endif

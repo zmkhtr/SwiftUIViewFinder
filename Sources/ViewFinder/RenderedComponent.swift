@@ -1,4 +1,3 @@
-#if canImport(UIKit)
 import CoreGraphics
 import Foundation
 
@@ -179,9 +178,8 @@ enum RenderedComponentReconciler {
                 name: currentRoot.name,
                 qualifiedName: currentRoot.qualifiedName,
                 frame: renderedRoot.frame,
-                children: []
+                children: renderedRoot.children
             )
         ]
     }
 }
-#endif

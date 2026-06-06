@@ -26,13 +26,14 @@ public struct RenderedHierarchySnapshot: Sendable {
 public enum PrivateRenderedHierarchyProbe {
     private static var didRequestAllProperties = false
 
-    /// Requests private graph debug properties before SwiftUI creates the graph.
+    /// Requests the minimal private graph properties needed for component
+    /// names and frames before SwiftUI creates the graph.
     ///
     /// Returns `false` when the current runtime does not expose the required
     /// private ABI symbol.
     @discardableResult
     public static func prepareForGraphCreation() -> Bool {
-        let requested = requestAllViewDebugProperties()
+        let requested = requestSafeViewDebugProperties()
         didRequestAllProperties = didRequestAllProperties || requested
         return requested
     }
@@ -80,9 +81,6 @@ public enum PrivateRenderedHierarchyProbe {
         }
 
         let erasedHostingView = unsafeBitCast(hostingView, to: _UIHostingView<AnyView>.self)
-        erasedHostingView.setNeedsLayout()
-        erasedHostingView.layoutIfNeeded()
-        erasedHostingView._renderForTest(interval: 0)
         return capture(from: erasedHostingView)
     }
 
@@ -103,7 +101,7 @@ public enum PrivateRenderedHierarchyProbe {
         )
     }
 
-    private static func requestAllViewDebugProperties() -> Bool {
+    private static func requestSafeViewDebugProperties() -> Bool {
         guard let handle = dlopen(nil, RTLD_NOW),
               let symbol = dlsym(
                 handle,
@@ -114,7 +112,7 @@ public enum PrivateRenderedHierarchyProbe {
 
         typealias PropertiesSetter = @convention(thin) (_ViewDebug.Properties) -> Void
         let setter = unsafeBitCast(symbol, to: PropertiesSetter.self)
-        setter(.all)
+        setter([.type, .position, .size])
         return true
     }
 

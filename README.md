@@ -85,6 +85,20 @@ Calling `ViewFinder.enable(...)` from `App.init()` enables SwiftUI's private
 debug properties before the root graph is created. The root modifier then
 locates the mounted host and renders overlays.
 
+SwiftUI can erase custom component boundaries, especially inside `TabView` and
+conditional content. Mark important component instances for exact live names
+and frames:
+
+```swift
+TabView {
+    HomeScreen()
+        .viewFinderComponent()
+
+    SettingsScreen()
+        .viewFinderComponent()
+}
+```
+
 Or safely inspect stored values reachable from a concrete root:
 
 ```swift
@@ -150,6 +164,8 @@ Do not build the inspector panel until those tasks work on real app hosts.
   doing so outside SwiftUI can trap on `@EnvironmentObject` and other dynamic
   properties. Deeper descendants can therefore be missing.
 - The private graph payload tested so far contains no source file or line field.
+- Exact component boundaries erased by SwiftUI require `.viewFinderComponent()`
+  on the component instance.
 - The current overlay is non-interactive and may contain noisy or overlapping labels.
 - UIKit activation alone currently yields only a UIKit hierarchy.
 

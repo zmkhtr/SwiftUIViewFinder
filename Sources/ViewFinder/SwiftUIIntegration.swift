@@ -21,12 +21,21 @@ public extension View {
             )
         )
     }
+
+    /// Marks this exact mounted component for reliable live overlay tracking.
+    ///
+    /// Use this on custom component instances when SwiftUI's private rendered
+    /// graph erases their boundary, such as children inside `TabView`.
+    func viewFinderComponent() -> some View {
+        modifier(ViewFinderComponentModifier(componentType: Self.self))
+    }
 }
 
 private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
     let contentForInspection: InspectedContent
     let mode: InspectionMode
     let overlayStyle: OverlayStyle
+    @State private var markedComponents: [RenderedComponent] = []
 
     func body(content: Content) -> some View {
         let currentRoots = StaticViewHierarchyInspector()
@@ -34,12 +43,17 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
             .roots
 
         content
+            .coordinateSpace(name: ViewFinderCoordinateSpace.root)
+            .onPreferenceChange(ViewFinderComponentPreferenceKey.self) {
+                markedComponents = $0
+            }
             .background {
                 #if canImport(UIKit)
                 ViewFinderLocator(
                     mode: mode,
                     overlayStyle: overlayStyle,
-                    currentRoots: currentRoots
+                    currentRoots: currentRoots,
+                    markedComponents: markedComponents
                 )
                     .frame(width: 0, height: 0)
                 #endif
@@ -50,5 +64,49 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
                     ViewFinder.inspect(contentForInspection)
                 }
             }
+    }
+}
+
+private enum ViewFinderCoordinateSpace {
+    static let root = "ViewFinder.RootCoordinateSpace"
+}
+
+private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
+    let componentType: Component.Type
+
+    func body(content: Content) -> some View {
+        content.background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: ViewFinderComponentPreferenceKey.self,
+                    value: [
+                        RenderedComponent(
+                            name: readableName,
+                            qualifiedName: qualifiedName,
+                            frame: proxy.frame(in: .named(ViewFinderCoordinateSpace.root)),
+                            children: []
+                        )
+                    ]
+                )
+            }
+        }
+    }
+
+    private var qualifiedName: String {
+        String(reflecting: componentType)
+    }
+
+    private var readableName: String {
+        let beforeGeneric = qualifiedName.split(separator: "<", maxSplits: 1).first.map(String.init)
+            ?? qualifiedName
+        return beforeGeneric.split(separator: ".").last.map(String.init) ?? beforeGeneric
+    }
+}
+
+private struct ViewFinderComponentPreferenceKey: PreferenceKey {
+    static let defaultValue: [RenderedComponent] = []
+
+    static func reduce(value: inout [RenderedComponent], nextValue: () -> [RenderedComponent]) {
+        value.append(contentsOf: nextValue())
     }
 }
