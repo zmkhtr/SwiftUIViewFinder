@@ -29,10 +29,18 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
     let overlayStyle: OverlayStyle
 
     func body(content: Content) -> some View {
+        let currentRoots = StaticViewHierarchyInspector()
+            .inspect(contentForInspection)
+            .roots
+
         content
             .background {
                 #if canImport(UIKit)
-                ViewFinderLocator(mode: mode, overlayStyle: overlayStyle)
+                ViewFinderLocator(
+                    mode: mode,
+                    overlayStyle: overlayStyle,
+                    currentRoots: currentRoots
+                )
                     .frame(width: 0, height: 0)
                 #endif
             }

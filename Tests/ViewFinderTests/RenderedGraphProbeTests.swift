@@ -90,4 +90,29 @@ func parsesApplicationTypeNestedInsideFrameworkWrapper() {
     #expect(components.first?.name == "HomeScreen")
     #expect(components.first?.frame == CGRect(x: 12, y: 24, width: 100, height: 80))
 }
+
+@Test
+func replacesStaleRenderedRootWithCurrentSafeRoot() {
+    let frame = CGRect(x: 0, y: 62, width: 402, height: 778)
+    let rendered = RenderedComponent(
+        name: "OnboardingScreen",
+        qualifiedName: "Khatm.OnboardingScreen",
+        frame: frame,
+        children: []
+    )
+    let current = ComponentNode(
+        name: "ContentView",
+        qualifiedName: "Khatm.ContentView",
+        origin: .rootValue
+    )
+
+    let components = RenderedComponentReconciler.reconcile(
+        renderedRoots: [rendered],
+        currentRoots: [current]
+    )
+
+    #expect(components.first?.name == "ContentView")
+    #expect(components.first?.qualifiedName == "Khatm.ContentView")
+    #expect(components.first?.frame == frame)
+}
 #endif

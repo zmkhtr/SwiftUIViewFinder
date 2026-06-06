@@ -14,11 +14,18 @@ final class MountedViewInspector {
     private var style: OverlayStyle = .compact
     private var refreshTimer: Timer?
     private var lastHierarchyText: String?
+    private var currentRoots: [ComponentNode] = []
 
-    func startMonitoring(from locator: UIView, mode: InspectionMode, style: OverlayStyle) {
+    func startMonitoring(
+        from locator: UIView,
+        mode: InspectionMode,
+        style: OverlayStyle,
+        currentRoots: [ComponentNode]
+    ) {
         if self.locator === locator,
            self.mode == mode,
            self.style == style,
+           self.currentRoots == currentRoots,
            refreshTimer != nil {
             return
         }
@@ -26,6 +33,7 @@ final class MountedViewInspector {
         self.locator = locator
         self.mode = mode
         self.style = style
+        self.currentRoots = currentRoots
 
         guard mode != .off else {
             stopMonitoring(from: locator)
@@ -52,6 +60,7 @@ final class MountedViewInspector {
         refreshTimer = nil
         self.locator = nil
         lastHierarchyText = nil
+        currentRoots = []
         overlayManager.hide()
     }
 
@@ -72,7 +81,10 @@ final class MountedViewInspector {
             return
         }
 
-        let roots = RenderedGraphParser.parse(json: snapshot.json)
+        let roots = RenderedComponentReconciler.reconcile(
+            renderedRoots: RenderedGraphParser.parse(json: snapshot.json),
+            currentRoots: currentRoots
+        )
         let components = roots.flatMap(\.flattened)
 
         let tree = roots.map { $0.formattedTree() }.joined(separator: "\n")
@@ -116,6 +128,7 @@ final class MountedViewInspector {
 struct ViewFinderLocator: UIViewRepresentable {
     let mode: InspectionMode
     let overlayStyle: OverlayStyle
+    let currentRoots: [ComponentNode]
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
@@ -124,7 +137,8 @@ struct ViewFinderLocator: UIViewRepresentable {
         MountedViewInspector.shared.startMonitoring(
             from: view,
             mode: mode,
-            style: overlayStyle
+            style: overlayStyle,
+            currentRoots: currentRoots
         )
         return view
     }
@@ -133,7 +147,8 @@ struct ViewFinderLocator: UIViewRepresentable {
         MountedViewInspector.shared.startMonitoring(
             from: uiView,
             mode: mode,
-            style: overlayStyle
+            style: overlayStyle,
+            currentRoots: currentRoots
         )
     }
 

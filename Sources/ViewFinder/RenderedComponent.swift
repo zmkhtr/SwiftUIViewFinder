@@ -159,4 +159,29 @@ enum RenderedGraphParser {
         return CGRect(origin: position, size: size)
     }
 }
+
+enum RenderedComponentReconciler {
+    static func reconcile(
+        renderedRoots: [RenderedComponent],
+        currentRoots: [ComponentNode]
+    ) -> [RenderedComponent] {
+        guard renderedRoots.count == 1,
+              currentRoots.count == 1,
+              let renderedRoot = renderedRoots.first,
+              let currentRoot = currentRoots.first,
+              !renderedRoot.flattened.contains(where: { $0.qualifiedName == currentRoot.qualifiedName })
+        else {
+            return renderedRoots
+        }
+
+        return [
+            RenderedComponent(
+                name: currentRoot.name,
+                qualifiedName: currentRoot.qualifiedName,
+                frame: renderedRoot.frame,
+                children: []
+            )
+        ]
+    }
+}
 #endif
