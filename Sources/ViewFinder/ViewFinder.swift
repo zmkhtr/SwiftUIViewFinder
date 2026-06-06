@@ -1,8 +1,11 @@
 import SwiftUI
+import os
 
 /// Global entry point for the ViewFinder research prototype.
 @MainActor
 public enum ViewFinder {
+    private static let logger = Logger(subsystem: "ViewFinder", category: "RootValue")
+
     /// The currently active inspection mode.
     public private(set) static var mode: InspectionMode = .off
 
@@ -37,7 +40,9 @@ public enum ViewFinder {
 
         let report = StaticViewHierarchyInspector(options: options).inspect(root)
         if mode.includesLogs {
-            print("[ViewFinder] Root-value component hierarchy:\n\n\(report.formatted())")
+            let formatted = report.formatted()
+            print("[ViewFinder] Root-value component hierarchy:\n\n\(formatted)")
+            logger.info("Root-value component hierarchy:\n\(formatted, privacy: .public)")
         }
         return report
     }

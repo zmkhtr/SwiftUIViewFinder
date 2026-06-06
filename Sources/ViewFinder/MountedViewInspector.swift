@@ -80,6 +80,11 @@ struct ViewFinderLocator: UIViewRepresentable {
         let view = UIView(frame: .zero)
         view.isUserInteractionEnabled = false
         view.alpha = 0
+        MountedViewInspector.shared.scheduleInspection(
+            from: view,
+            mode: mode,
+            style: overlayStyle
+        )
         return view
     }
 
