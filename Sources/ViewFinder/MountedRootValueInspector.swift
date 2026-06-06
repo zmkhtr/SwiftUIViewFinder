@@ -91,6 +91,9 @@ enum MountedRootValueInspector {
 
     private static func isApplicationType(_ type: String) -> Bool {
         !HierarchyOptions.defaultFrameworkModulePrefixes.contains { type.hasPrefix($0) }
+            && !type.hasPrefix("(extension in SwiftUI):")
+            && !type.hasPrefix("(extension in SwiftUICore):")
+            && !type.hasPrefix("(extension in Foundation):")
             && !type.hasPrefix("__C.")
             && !type.hasPrefix("AttributeGraph.")
             && !type.hasPrefix("ViewFinder.")
