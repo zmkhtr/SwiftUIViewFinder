@@ -214,8 +214,11 @@ enum ReflectedRenderedGraphParser {
         let children = collectionElements(of: childrenValue)
             .flatMap { parseNode($0, inheritedFrame: frame) }
 
-        guard let type = attributes["type"] as? String,
-              let applicationType = applicationType(in: type) else {
+        let valueType = attributes["value"].flatMap {
+            applicationType(in: String(reflecting: $0))
+        }
+        let declaredType = (attributes["type"] as? String).flatMap(applicationType(in:))
+        guard let applicationType = valueType ?? declaredType else {
             return children
         }
 
@@ -257,10 +260,6 @@ enum ReflectedRenderedGraphParser {
     }
 
     private static func applicationType(in type: String) -> String? {
-        if isApplicationType(type) {
-            return type
-        }
-
         let pattern = #"[A-Za-z_][A-Za-z0-9_]*\.(?:\(unknown context at \$[0-9a-f]+\)\.)?[A-Za-z_][A-Za-z0-9_]*"#
         guard let expression = try? NSRegularExpression(pattern: pattern) else {
             return nil
