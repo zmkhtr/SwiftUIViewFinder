@@ -217,10 +217,10 @@ final class GlobalViewFinderMonitor {
 
     private func frontmostRenderedComponents(hostingViews: [UIView]) -> (UIView, [RenderedComponent])? {
         for hostingView in hostingViews.reversed() {
-            let rendered = PrivateRenderedHierarchyProbe.reflectedComponents(fromUnknownHostingView: hostingView)
-            let components = rendered.isEmpty
-                ? MountedHostingViewReflector.components(in: hostingView)
-                : rendered
+            let mounted = MountedHostingViewReflector.components(in: hostingView)
+            let components = mounted.isEmpty
+                ? PrivateRenderedHierarchyProbe.reflectedComponents(fromUnknownHostingView: hostingView)
+                : mounted
             guard !components.isEmpty else { continue }
             let mountedText = components.map(\.qualifiedName).joined(separator: "\n")
             if mode.includesLogs, mountedText != lastMountedTypesText {
@@ -233,12 +233,13 @@ final class GlobalViewFinderMonitor {
     }
 
     private func presentedViewController(in window: UIWindow) -> UIViewController? {
-        guard let presented = window.rootViewController?.presentedViewController else {
-            return nil
-        }
-        return !presented.isBeingDismissed && presented.viewIfLoaded?.window != nil
-            ? presented
-            : nil
+        allViewControllers(from: window.rootViewController)
+            .reversed()
+            .first {
+                $0.presentingViewController != nil
+                    && !$0.isBeingDismissed
+                    && $0.viewIfLoaded?.window != nil
+            }
     }
 
     private func isFullScreenPresentation(_ controller: UIViewController) -> Bool {
