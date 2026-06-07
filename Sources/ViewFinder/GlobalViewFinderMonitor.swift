@@ -138,6 +138,9 @@ final class GlobalViewFinderMonitor {
         }
 
         for (hostingView, renderedComponents) in candidates.reversed() {
+                if let activeComponent = activeComponent(in: hostingView, window: window) {
+                    return (hostingView, [activeComponent])
+                }
                 let mountedComponents = MountedHostingViewReflector.components(in: hostingView)
                 let mountedTypes = mountedComponents.map(\.qualifiedName)
                 let mountedText = mountedTypes.joined(separator: "\n")
@@ -149,8 +152,7 @@ final class GlobalViewFinderMonitor {
                     hostingView,
                     replacingStaleRoot(
                         in: renderedComponents,
-                        with: activeComponent(in: hostingView, window: window)
-                            ?? mountedComponents.last
+                        with: mountedComponents.last
                     )
                 )
         }
