@@ -151,7 +151,7 @@ public enum PrivateRenderedHierarchyProbe {
 
         typealias PropertiesSetter = @convention(thin) (_ViewDebug.Properties) -> Void
         let setter = unsafeBitCast(symbol, to: PropertiesSetter.self)
-        setter(.all)
+        setter([.type, .value, .position, .size])
         return true
     }
 

@@ -88,6 +88,25 @@ func capturesFromMountedHostingViewWithUnknownContentType() {
 
 @MainActor
 @Test
+func reusesUnchangedOverlayHierarchy() {
+    let host = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+    let component = RenderedComponent(
+        name: "HomeScreen",
+        qualifiedName: "Example.HomeScreen",
+        frame: host.bounds,
+        children: []
+    )
+    let manager = ViewFinderOverlayManager()
+
+    manager.show(components: [component], relativeTo: host, style: .compact)
+    let firstOverlay = host.subviews.last
+    manager.show(components: [component], relativeTo: host, style: .compact)
+
+    #expect(host.subviews.last === firstOverlay)
+}
+
+@MainActor
+@Test
 func recoversCurrentRootAndImmediateTabChildren() {
     let hostingView = _UIHostingView(rootView: RenderedProbeTabs())
     let roots = PrivateRenderedHierarchyProbe.currentRoots(fromUnknownHostingView: hostingView)

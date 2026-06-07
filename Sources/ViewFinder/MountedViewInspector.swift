@@ -178,8 +178,19 @@ struct ViewFinderLocator: UIViewRepresentable {
 @MainActor
 final class ViewFinderOverlayManager {
     private weak var overlayView: UIView?
+    private weak var overlayHost: UIView?
+    private var renderedComponents: [RenderedComponent] = []
+    private var renderedStyle: OverlayStyle?
+    private var renderedBounds: CGRect = .null
 
     func show(components: [RenderedComponent], relativeTo overlayHost: UIView, style: OverlayStyle) {
+        if self.overlayHost === overlayHost,
+           renderedComponents == components,
+           renderedStyle == style,
+           renderedBounds == overlayHost.bounds,
+           overlayView?.superview === overlayHost {
+            return
+        }
         hide()
 
         let container = PassThroughOverlayView(frame: overlayHost.bounds)
@@ -228,6 +239,10 @@ final class ViewFinderOverlayManager {
 
         overlayHost.addSubview(container)
         overlayView = container
+        self.overlayHost = overlayHost
+        renderedComponents = components
+        renderedStyle = style
+        renderedBounds = overlayHost.bounds
     }
 
     func showStatus(_ text: String, relativeTo view: UIView) {
@@ -251,6 +266,11 @@ final class ViewFinderOverlayManager {
 
     func hide() {
         overlayView?.removeFromSuperview()
+        overlayView = nil
+        overlayHost = nil
+        renderedComponents = []
+        renderedStyle = nil
+        renderedBounds = .null
     }
 
     private func detailedLabel(for component: RenderedComponent, frame: CGRect) -> String {

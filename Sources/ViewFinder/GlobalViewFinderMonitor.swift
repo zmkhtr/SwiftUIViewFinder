@@ -2,6 +2,16 @@
 import UIKit
 import os
 
+private struct NavigationSignature: Equatable {
+    let window: ObjectIdentifier
+    let selectedTabIndex: Int?
+    let navigationDepth: Int
+    let topViewController: ObjectIdentifier?
+    let hostingViews: [ObjectIdentifier]
+    let bounds: CGRect
+    let hasPresentation: Bool
+}
+
 @MainActor
 final class GlobalViewFinderMonitor {
     static let shared = GlobalViewFinderMonitor()
@@ -14,9 +24,10 @@ final class GlobalViewFinderMonitor {
     private var overlayWindow: PassThroughOverlayWindow?
     private var lastHierarchyText: String?
     private var lastMountedTypesText: String?
-    private var lastMountedRootsText: String?
     private var lastCandidateText: String?
     private var registeredTabComponents: [RenderedComponent] = []
+    private var lastNavigationSignature: NavigationSignature?
+    private var cachedInspectedComponents: (hostingView: UIView, components: [RenderedComponent])?
 
     func start(mode: InspectionMode, style: OverlayStyle, tabComponents: [Any.Type]) {
         self.mode = mode
@@ -45,12 +56,12 @@ final class GlobalViewFinderMonitor {
             return
         }
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.refresh()
             }
         }
-        refreshTimer?.tolerance = 0.1
+        refreshTimer?.tolerance = 0.03
         DispatchQueue.main.async { [weak self] in
             self?.refresh()
         }
@@ -63,6 +74,8 @@ final class GlobalViewFinderMonitor {
         overlayWindow?.isHidden = true
         overlayWindow = nil
         lastHierarchyText = nil
+        lastNavigationSignature = nil
+        cachedInspectedComponents = nil
     }
 
     private func refresh() {
@@ -72,21 +85,87 @@ final class GlobalViewFinderMonitor {
             return
         }
 
-        if hasPresentedViewController(in: sourceWindow) {
+        let controllers = allViewControllers(from: sourceWindow.rootViewController)
+        let navigationDepth = controllers
+            .compactMap { ($0 as? UINavigationController)?.viewControllers.count }
+            .max() ?? 0
+        let hasPresentation = hasPresentedViewController(in: sourceWindow)
+        let controllerTabIndex = controllers
+            .compactMap { $0 as? UITabBarController }
+            .first(where: { $0.viewIfLoaded?.window === sourceWindow })?
+            .selectedIndex
+        let lightweightSignature = NavigationSignature(
+            window: ObjectIdentifier(sourceWindow),
+            selectedTabIndex: controllerTabIndex,
+            navigationDepth: navigationDepth,
+            topViewController: topViewControllerIdentifier(in: controllers),
+            hostingViews: [],
+            bounds: sourceWindow.bounds,
+            hasPresentation: hasPresentation
+        )
+
+        if hasPresentation {
             overlayManager.hide()
             overlayWindow?.isHidden = true
+            lastNavigationSignature = lightweightSignature
+            cachedInspectedComponents = nil
             return
         }
         overlayWindow?.isHidden = false
 
-        guard
-              let (hostingView, components) = frontmostRenderedComponents(in: sourceWindow),
-              let overlayHost = overlayHost(for: sourceWindow) else {
+        guard let overlayHost = overlayHost(for: sourceWindow) else {
             overlayManager.hide()
             return
         }
 
-        let convertedComponents = components.map { converted($0, from: hostingView, to: overlayHost) }
+        let convertedComponents: [RenderedComponent]
+        if navigationDepth <= 1,
+           let selectedTabIndex = controllerTabIndex,
+           registeredTabComponents.indices.contains(selectedTabIndex) {
+            let component = registeredTabComponents[selectedTabIndex]
+            convertedComponents = [
+                RenderedComponent(
+                    name: component.name,
+                    qualifiedName: component.qualifiedName,
+                    frame: overlayHost.convert(sourceWindow.bounds, from: sourceWindow),
+                    children: []
+                )
+            ]
+            cachedInspectedComponents = nil
+            lastNavigationSignature = lightweightSignature
+        } else {
+            let descendants = sourceWindow.allDescendantsInFrontToBack()
+            let hostingViews = descendants.filter {
+                String(describing: type(of: $0)).contains("HostingView")
+                    && $0.isEffectivelyVisible
+                    && $0.bounds.width > 8
+                    && $0.bounds.height > 8
+            }
+            let selectedTabIndex = controllerTabIndex
+                ?? selectedTabIndex(in: sourceWindow, descendants: descendants)
+            let signature = NavigationSignature(
+                window: lightweightSignature.window,
+                selectedTabIndex: selectedTabIndex,
+                navigationDepth: navigationDepth,
+                topViewController: lightweightSignature.topViewController,
+                hostingViews: hostingViews.map(ObjectIdentifier.init),
+                bounds: lightweightSignature.bounds,
+                hasPresentation: false
+            )
+            if signature != lastNavigationSignature {
+                cachedInspectedComponents = frontmostRenderedComponents(hostingViews: hostingViews)
+            }
+            guard let cachedInspectedComponents else {
+                overlayManager.hide()
+                lastNavigationSignature = signature
+                return
+            }
+            convertedComponents = cachedInspectedComponents.components.map {
+                converted($0, from: cachedInspectedComponents.hostingView, to: overlayHost)
+            }
+            lastNavigationSignature = signature
+        }
+
         let visibleComponents = convertedComponents
             .flatMap(\.flattened)
             .filter { component in
@@ -124,20 +203,12 @@ final class GlobalViewFinderMonitor {
             .last
     }
 
-    private func frontmostRenderedComponents(in window: UIWindow) -> (UIView, [RenderedComponent])? {
-        let hostingViews = window.allDescendantsInFrontToBack()
-            .filter {
-                String(describing: type(of: $0)).contains("HostingView")
-                    && $0.isEffectivelyVisible
-                    && $0.bounds.width > 8
-                    && $0.bounds.height > 8
-            }
-
+    private func frontmostRenderedComponents(hostingViews: [UIView]) -> (UIView, [RenderedComponent])? {
         let candidates = hostingViews.compactMap { hostingView -> (UIView, [RenderedComponent])? in
-            let rendered = PrivateRenderedHierarchyProbe
-                .reflectedComponents(fromUnknownHostingView: hostingView)
             let mounted = MountedHostingViewReflector.components(in: hostingView)
-            let components = mounted.isEmpty ? rendered : mounted
+            let components = mounted.isEmpty
+                ? PrivateRenderedHierarchyProbe.reflectedComponents(fromUnknownHostingView: hostingView)
+                : mounted
             return components.isEmpty ? nil : (hostingView, components)
         }
         let candidateText = candidates.enumerated().map { index, candidate in
@@ -149,58 +220,15 @@ final class GlobalViewFinderMonitor {
             print("[ViewFinder] Visible hosting candidates:\n\(candidateText)")
         }
 
-        for (hostingView, renderedComponents) in candidates.reversed() {
-                if let activeComponent = activeComponent(in: hostingView, window: window) {
-                    return (hostingView, [activeComponent])
-                }
-                let mountedComponents = MountedHostingViewReflector.components(in: hostingView)
-                let mountedTypes = mountedComponents.map(\.qualifiedName)
-                let mountedText = mountedTypes.joined(separator: "\n")
-                if mode.includesLogs, mountedText != lastMountedTypesText {
-                    lastMountedTypesText = mountedText
-                    print("[ViewFinder] Current mounted application types:\n\(mountedText)")
-                }
-                return (
-                    hostingView,
-                    replacingStaleRoot(
-                        in: renderedComponents,
-                        with: mountedComponents.last
-                    )
-                )
+        for (hostingView, components) in candidates.reversed() {
+            let mountedText = components.map(\.qualifiedName).joined(separator: "\n")
+            if mode.includesLogs, mountedText != lastMountedTypesText {
+                lastMountedTypesText = mountedText
+                print("[ViewFinder] Current mounted application types:\n\(mountedText)")
+            }
+            return (hostingView, components)
         }
         return nil
-    }
-
-    private func activeComponent(in hostingView: UIView, window: UIWindow) -> RenderedComponent? {
-        guard let selectedIndex = selectedTabIndex(in: window) else { return nil }
-        if hasPresentedViewController(in: window) || hasPushedViewController(in: window) {
-            return nil
-        }
-        if registeredTabComponents.indices.contains(selectedIndex) {
-            let component = registeredTabComponents[selectedIndex]
-            return RenderedComponent(
-                name: component.name,
-                qualifiedName: component.qualifiedName,
-                frame: hostingView.bounds,
-                children: []
-            )
-        }
-        let roots = PrivateRenderedHierarchyProbe.currentRoots(fromUnknownHostingView: hostingView)
-        let rootsText = roots.map { $0.formattedTree() }.joined(separator: "\n")
-        if mode.includesLogs, rootsText != lastMountedRootsText {
-            lastMountedRootsText = rootsText
-            print("[ViewFinder] Current mounted root values:\n\(rootsText)")
-        }
-        guard let root = roots.last, root.children.indices.contains(selectedIndex) else {
-            return nil
-        }
-        let child = root.children[selectedIndex]
-        return RenderedComponent(
-            name: child.name,
-            qualifiedName: child.qualifiedName,
-            frame: hostingView.bounds,
-            children: []
-        )
     }
 
     private func hasPresentedViewController(in window: UIWindow) -> Bool {
@@ -210,12 +238,6 @@ final class GlobalViewFinderMonitor {
         return !presented.isBeingDismissed && presented.viewIfLoaded?.window != nil
     }
 
-    private func hasPushedViewController(in window: UIWindow) -> Bool {
-        allViewControllers(from: window.rootViewController).contains {
-            ($0 as? UINavigationController)?.viewControllers.count ?? 0 > 1
-        }
-    }
-
     private func allViewControllers(from controller: UIViewController?) -> [UIViewController] {
         guard let controller else { return [] }
         return [controller]
@@ -223,8 +245,11 @@ final class GlobalViewFinderMonitor {
             + allViewControllers(from: controller.presentedViewController)
     }
 
-    private func selectedTabIndex(in window: UIWindow) -> Int? {
-        let tabBars = ([window] + window.allDescendantsInFrontToBack())
+    private func selectedTabIndex(
+        in window: UIWindow,
+        descendants: [UIView]
+    ) -> Int? {
+        let tabBars = ([window] + descendants)
             .compactMap { $0 as? UITabBar }
             .filter(\.isEffectivelyVisible)
         guard let tabBar = tabBars.first,
@@ -235,27 +260,12 @@ final class GlobalViewFinderMonitor {
         return items.firstIndex(of: selectedItem)
     }
 
-    private func replacingStaleRoot(
-        in renderedComponents: [RenderedComponent],
-        with currentComponent: RenderedComponent?
-    ) -> [RenderedComponent] {
-        guard renderedComponents.count == 1,
-              let renderedRoot = renderedComponents.first,
-              let currentComponent,
-              !renderedRoot.flattened.contains(where: {
-                  $0.qualifiedName == currentComponent.qualifiedName
-              }) else {
-            return renderedComponents
-        }
-
-        return [
-            RenderedComponent(
-                name: currentComponent.name,
-                qualifiedName: currentComponent.qualifiedName,
-                frame: renderedRoot.frame,
-                children: renderedRoot.children
-            )
-        ]
+    private func topViewControllerIdentifier(in controllers: [UIViewController]) -> ObjectIdentifier? {
+        let navigationTop = controllers
+            .compactMap { ($0 as? UINavigationController)?.topViewController }
+            .last
+        guard let top = navigationTop ?? controllers.last else { return nil }
+        return ObjectIdentifier(top)
     }
 
     private func overlayHost(for sourceWindow: UIWindow) -> UIView? {
