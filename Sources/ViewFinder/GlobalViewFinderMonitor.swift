@@ -90,7 +90,13 @@ final class GlobalViewFinderMonitor {
             .max() ?? 0
         let presentedController = presentedViewController(in: sourceWindow)
         let hasPresentation = presentedController != nil
-        let hasFullScreenPresentation = presentedController.map(isFullScreenPresentation) ?? false
+        let presentedControllers = allViewControllers(from: presentedController)
+        let hasAppOwnedPresentation = frontmostControllerComponent(
+            in: presentedControllers,
+            frame: sourceWindow.bounds
+        ) != nil
+        let hasFullScreenPresentation = hasAppOwnedPresentation
+            || (presentedController.map(isFullScreenPresentation) ?? false)
         let controllerTabIndex = controllers
             .compactMap { $0 as? UITabBarController }
             .first(where: { $0.viewIfLoaded?.window === sourceWindow })?
