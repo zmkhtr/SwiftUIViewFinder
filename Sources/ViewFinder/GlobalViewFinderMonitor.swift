@@ -236,7 +236,10 @@ final class GlobalViewFinderMonitor {
     }
 
     private func isFullScreenPresentation(_ controller: UIViewController) -> Bool {
-        controller.modalPresentationStyle == .fullScreen
+        if controller.presentationController is UISheetPresentationController {
+            return false
+        }
+        return controller.modalPresentationStyle == .fullScreen
             || controller.modalPresentationStyle == .overFullScreen
             || controller.presentationController?.shouldPresentInFullscreen == true
     }
