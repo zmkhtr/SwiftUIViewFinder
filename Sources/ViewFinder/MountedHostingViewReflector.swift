@@ -24,7 +24,7 @@ enum MountedHostingViewReflector {
         var visitedValueCount = 0
 
         func walk(_ value: Any, depth: Int) {
-            guard depth < 24, visitedValueCount < 5_000 else { return }
+            guard depth < 24, visitedValueCount < 2_500 else { return }
             visitedValueCount += 1
 
             let mirror = Mirror(reflecting: value)

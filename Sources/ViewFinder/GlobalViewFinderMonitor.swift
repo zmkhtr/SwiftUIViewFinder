@@ -164,7 +164,10 @@ final class GlobalViewFinderMonitor {
                 if let component = frontmostControllerComponent(in: controllers, frame: sourceWindow.bounds) {
                     cachedInspectedComponents = (sourceWindow, [component])
                 } else {
-                    cachedInspectedComponents = frontmostRenderedComponents(hostingViews: hostingViews)
+                    cachedInspectedComponents = frontmostRenderedComponents(
+                        hostingViews: hostingViews,
+                        preferFrontmost: hasFullScreenPresentation
+                    )
                 }
             }
             guard let cachedInspectedComponents else {
@@ -215,8 +218,12 @@ final class GlobalViewFinderMonitor {
             .last
     }
 
-    private func frontmostRenderedComponents(hostingViews: [UIView]) -> (UIView, [RenderedComponent])? {
-        for hostingView in hostingViews {
+    private func frontmostRenderedComponents(
+        hostingViews: [UIView],
+        preferFrontmost: Bool
+    ) -> (UIView, [RenderedComponent])? {
+        let orderedHostingViews = preferFrontmost ? hostingViews : Array(hostingViews.reversed())
+        for hostingView in orderedHostingViews {
             let mounted = MountedHostingViewReflector.components(in: hostingView)
             let components = mounted.isEmpty
                 ? PrivateRenderedHierarchyProbe.reflectedComponents(fromUnknownHostingView: hostingView)
