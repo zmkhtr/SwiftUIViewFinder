@@ -1,64 +1,45 @@
 # SwiftUIViewFinder
 
-SwiftUIViewFinder is a research-first Swift package exploring a React DevTools-style
-component inspector for SwiftUI. Consumers import the package as:
+SwiftUIViewFinder is a debug-only Swift package that identifies the active
+SwiftUI view at runtime and draws a non-interactive overlay containing its
+struct name.
 
-```swift
-import ViewFinder
-```
+Enable it once from `App.init()`. ViewFinder then follows tabs, navigation
+pushes, hidden-tab destinations, and full-screen presentations without adding
+modifiers throughout the application.
 
-The project is an early private-runtime prototype. It can recover meaningful
-application component names and display basic non-interactive overlays on
-supported SwiftUI runtimes.
+> [!WARNING]
+> ViewFinder uses private SwiftUI runtime APIs. Keep it out of App Store
+> release builds.
 
-## What Works Today
+## Screenshots
 
-Two console-first inspection paths are implemented:
-
-| Path | Result | Important limitation |
+| Selected tab | Navigation push with hidden tab bar | Full-screen presentation |
 | --- | --- | --- |
-| Root-value inspection | Safely recovers custom component values stored at one root integration point | Does not execute application bodies by default |
-| Private rendered-graph probe | Recovered nested custom names, graph structure, positions, and sizes on iOS 26.2 | Private ABI; the enabling symbol is absent on iOS 15.5 |
-| UIKit fallback | Produces the UIKit view hierarchy | Usually exposes hosting/container classes, not nested SwiftUI components |
-| Mounted overlay | Labels recovered application components on the live screen | Basic, non-interactive, and private-runtime dependent |
+| <img src="Docs/Images/viewfinder-home.png" width="250" alt="HomeScreen overlay"> | <img src="Docs/Images/viewfinder-hidden-tab-push.png" width="250" alt="Hidden tab navigation overlay"> | <img src="Docs/Images/viewfinder-full-screen-presentation.png" width="250" alt="Full-screen presentation overlay"> |
 
-Validated root-value output:
-
-```text
-HomeScreen
-├─ ProfileHeaderView
-│  └─ AvatarView
-└─ UserCardView
-```
-
-Validated private graph names on an iOS 26.2 simulator:
-
-```text
-RenderedProbeScreen
-RenderedProbeHeader
-RenderedProbeCard
-```
-
-See [Docs/Research.md](Docs/Research.md) for the evidence and limitations.
+The overlay window passes all touches through to the application. System sheets,
+including `FamilyActivityPicker`, temporarily hide the overlay so they remain
+fully interactive.
 
 ## Installation
 
-Swift Package Manager:
+Add the package with Swift Package Manager:
 
 ```swift
 dependencies: [
     .package(
         url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
-        from: "0.1.0"
+        from: "0.4.32"
     )
 ]
 ```
 
-Then add the `ViewFinder` product to the app target.
+Then add the `ViewFinder` product to the application target.
 
 ## Quick Start
 
-Enable ViewFinder once before SwiftUI creates the app's root graph:
+Enable ViewFinder before SwiftUI creates the root graph:
 
 ```swift
 import SwiftUI
@@ -67,48 +48,71 @@ import ViewFinder
 @main
 struct MyApp: App {
     init() {
-        // Required before WindowGroup creation for rendered component frames.
         ViewFinder.enable(mode: .overlayAndLogs)
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            ContentView()
         }
     }
 }
 ```
 
-Calling `ViewFinder.enable(...)` from `App.init()` configures ViewFinder before
-the root graph is created. ViewFinder then discovers the foreground mounted
-host globally and follows tabs, navigation pushes, and presented views without
-requiring modifiers on application views.
+That one call is enough for navigation pushes and full-screen presentations.
 
-When `TabView` erases every selected custom type, register its components once
-at app setup. ViewFinder reads the selected UIKit tab automatically:
+For a `TabView`, register the root component for each tab once. ViewFinder reads
+the selected UIKit tab automatically:
 
 ```swift
 ViewFinder.enable(
     mode: .overlayAndLogs,
-    tabComponents: [HomeScreen.self, SearchScreen.self, SettingsScreen.self]
+    tabComponents: [
+        HomeScreen.self,
+        SearchScreen.self,
+        SettingsScreen.self,
+    ]
 )
 ```
 
-`enableViewFinder(...)` and `viewFinderComponent(...)` remain available as
-optional explicit integration tools. A component marker can supply an exact
-call-site file and line when SwiftUI erases that component boundary:
+No `.enableViewFinder(...)` or `.viewFinderComponent(...)` modifier is required
+for the global workflow.
+
+## Output Modes
 
 ```swift
-TabView {
-    HomeScreen()
-        .viewFinderComponent()
-
-    SettingsScreen()
-        .viewFinderComponent()
-}
+ViewFinder.enable(mode: .overlay)
+ViewFinder.enable(mode: .logs)
+ViewFinder.enable(mode: .overlayAndLogs)
+ViewFinder.disable()
 ```
 
-Or safely inspect stored values reachable from a concrete root:
+Overlay styles:
+
+```swift
+ViewFinder.enable(
+    mode: .overlayAndLogs,
+    overlayStyle: .detailed
+)
+```
+
+The overlay is intentionally non-interactive and uses a separate pass-through
+window. It updates from lightweight UIKit navigation state and only performs
+deeper SwiftUI inspection when the visible navigation structure changes.
+
+## Optional Explicit Inspection
+
+The original explicit APIs remain available for research and exact source
+markers.
+
+Mark a specific component:
+
+```swift
+HomeScreen()
+    .viewFinderComponent()
+```
+
+Inspect a concrete root value:
 
 ```swift
 ViewFinder.enable(mode: .logs)
@@ -116,65 +120,44 @@ let report = ViewFinder.inspect(RootView())
 print(report.formatted())
 ```
 
-Unsafe body evaluation remains available only for controlled research views
-that do not depend on SwiftUI-managed environment or dynamic properties:
+Unsafe body evaluation is available only for controlled research views that do
+not depend on SwiftUI-managed environment or dynamic properties:
 
 ```swift
 let options = HierarchyOptions(bodyEvaluationPolicy: .unsafe)
 ViewFinder.inspect(ResearchRootView(), options: options)
 ```
 
-Global activation APIs exist, but AppDelegate-only activation cannot yet recover
-an already-running live SwiftUI graph:
+## Supported Behavior
 
-```swift
-ViewFinder.enable()
-ViewFinder.setMode(.logs)
-ViewFinder.disable()
-```
+- One-time global setup from `App.init()`
+- Selected `TabView` root tracking with registered tab component types
+- `NavigationView` and navigation-controller pushes
+- Pushed destinations that hide the tab bar
+- SwiftUI `fullScreenCover` presentations
+- Pass-through overlays that do not block application interaction
+- Automatic hiding for system and sheet presentations
+- Change-based logging and cached overlay rendering
 
-## Run The Prototype
+## Run The Tests
 
 ```bash
-swift run ViewFinderResearch
 swift test
-```
 
-The private rendered-graph test requires an iOS simulator:
-
-```bash
 xcodebuild test \
   -scheme SwiftUIViewFinder-Package \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
-## Current Decision Gate
-
-**Proceed to Phase 3, with constraints.**
-
-The central hypothesis is validated: custom SwiftUI component names survive in
-SwiftUI's private rendered debug graph on at least iOS 26.2. The next work should
-focus on:
-
-1. Parsing `_ViewDebug` JSON into a filtered component tree.
-2. Accessing the live hosting graph without knowing its generic `Content` type.
-3. Testing the private path across iOS versions.
-4. Improving frame correlation and overlay filtering.
-
-Do not build the inspector panel until those tasks work on real app hosts.
-
 ## Limitations
 
-- This is debug-only research software.
-- Global mounted-host discovery uses private SwiftUI APIs and may change without
-  notice.
-- Safe root-value inspection does not execute custom `body` properties, because
-  doing so outside SwiftUI can trap on `@EnvironmentObject` and other dynamic
-  properties. Deeper descendants can therefore be missing.
-- The private graph payload tested so far contains no source file or line field.
-- Exact source file and line information requires `.viewFinderComponent()` on
-  the component instance.
-- The current overlay is non-interactive and may contain noisy or overlapping labels.
+- This is private-runtime, debug-only research software.
+- Private SwiftUI APIs can change across iOS and Xcode releases.
+- Registering tab root types is currently required for reliable `TabView`
+  selection tracking.
+- SwiftUI can erase component boundaries inside complex containers.
+- Exact source file and line information requires `.viewFinderComponent()`.
+- The overlay may contain noisy or overlapping labels for complex view graphs.
 
 ## Documentation
 
