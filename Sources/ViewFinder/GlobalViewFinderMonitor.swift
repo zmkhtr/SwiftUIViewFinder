@@ -192,7 +192,10 @@ final class GlobalViewFinderMonitor {
     }
 
     private func hasPresentedViewController(in window: UIWindow) -> Bool {
-        window.rootViewController?.presentedViewController != nil
+        guard let presented = window.rootViewController?.presentedViewController else {
+            return false
+        }
+        return !presented.isBeingDismissed && presented.viewIfLoaded?.window != nil
     }
 
     private func hasPushedViewController(in window: UIWindow) -> Bool {
