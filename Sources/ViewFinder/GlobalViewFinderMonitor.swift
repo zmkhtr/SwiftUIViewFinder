@@ -216,7 +216,7 @@ final class GlobalViewFinderMonitor {
     }
 
     private func frontmostRenderedComponents(hostingViews: [UIView]) -> (UIView, [RenderedComponent])? {
-        for hostingView in hostingViews.reversed() {
+        for hostingView in hostingViews {
             let mounted = MountedHostingViewReflector.components(in: hostingView)
             let components = mounted.isEmpty
                 ? PrivateRenderedHierarchyProbe.reflectedComponents(fromUnknownHostingView: hostingView)
