@@ -24,7 +24,6 @@ final class GlobalViewFinderMonitor {
     private var overlayWindow: PassThroughOverlayWindow?
     private var lastHierarchyText: String?
     private var lastMountedTypesText: String?
-    private var lastCandidateText: String?
     private var registeredTabComponents: [RenderedComponent] = []
     private var lastNavigationSignature: NavigationSignature?
     private var cachedInspectedComponents: (hostingView: UIView, components: [RenderedComponent])?
@@ -89,7 +88,9 @@ final class GlobalViewFinderMonitor {
         let navigationDepth = controllers
             .compactMap { ($0 as? UINavigationController)?.viewControllers.count }
             .max() ?? 0
-        let hasPresentation = hasPresentedViewController(in: sourceWindow)
+        let presentedController = presentedViewController(in: sourceWindow)
+        let hasPresentation = presentedController != nil
+        let hasFullScreenPresentation = presentedController.map(isFullScreenPresentation) ?? false
         let controllerTabIndex = controllers
             .compactMap { $0 as? UITabBarController }
             .first(where: { $0.viewIfLoaded?.window === sourceWindow })?
@@ -104,7 +105,7 @@ final class GlobalViewFinderMonitor {
             hasPresentation: hasPresentation
         )
 
-        if hasPresentation {
+        if hasPresentation && !hasFullScreenPresentation {
             overlayManager.hide()
             overlayWindow?.isHidden = true
             lastNavigationSignature = lightweightSignature
@@ -119,7 +120,8 @@ final class GlobalViewFinderMonitor {
         }
 
         let convertedComponents: [RenderedComponent]
-        if navigationDepth <= 1,
+        if !hasFullScreenPresentation,
+           navigationDepth <= 1,
            let selectedTabIndex = controllerTabIndex,
            registeredTabComponents.indices.contains(selectedTabIndex) {
             let component = registeredTabComponents[selectedTabIndex]
@@ -204,23 +206,12 @@ final class GlobalViewFinderMonitor {
     }
 
     private func frontmostRenderedComponents(hostingViews: [UIView]) -> (UIView, [RenderedComponent])? {
-        let candidates = hostingViews.compactMap { hostingView -> (UIView, [RenderedComponent])? in
+        for hostingView in hostingViews.reversed() {
             let mounted = MountedHostingViewReflector.components(in: hostingView)
             let components = mounted.isEmpty
                 ? PrivateRenderedHierarchyProbe.reflectedComponents(fromUnknownHostingView: hostingView)
                 : mounted
-            return components.isEmpty ? nil : (hostingView, components)
-        }
-        let candidateText = candidates.enumerated().map { index, candidate in
-            let names = candidate.1.flatMap(\.flattened).map(\.name).joined(separator: ", ")
-            return "\(index): \(type(of: candidate.0)) [\(names)]"
-        }.joined(separator: "\n")
-        if mode.includesLogs, candidateText != lastCandidateText {
-            lastCandidateText = candidateText
-            print("[ViewFinder] Visible hosting candidates:\n\(candidateText)")
-        }
-
-        for (hostingView, components) in candidates.reversed() {
+            guard !components.isEmpty else { continue }
             let mountedText = components.map(\.qualifiedName).joined(separator: "\n")
             if mode.includesLogs, mountedText != lastMountedTypesText {
                 lastMountedTypesText = mountedText
@@ -231,11 +222,18 @@ final class GlobalViewFinderMonitor {
         return nil
     }
 
-    private func hasPresentedViewController(in window: UIWindow) -> Bool {
+    private func presentedViewController(in window: UIWindow) -> UIViewController? {
         guard let presented = window.rootViewController?.presentedViewController else {
-            return false
+            return nil
         }
         return !presented.isBeingDismissed && presented.viewIfLoaded?.window != nil
+            ? presented
+            : nil
+    }
+
+    private func isFullScreenPresentation(_ controller: UIViewController) -> Bool {
+        controller.modalPresentationStyle == .fullScreen
+            || controller.modalPresentationStyle == .overFullScreen
     }
 
     private func allViewControllers(from controller: UIViewController?) -> [UIViewController] {
