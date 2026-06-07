@@ -67,7 +67,19 @@ final class GlobalViewFinderMonitor {
 
     private func refresh() {
         guard mode != .off,
-              let sourceWindow = frontmostApplicationWindow(),
+              let sourceWindow = frontmostApplicationWindow() else {
+            overlayManager.hide()
+            return
+        }
+
+        if hasPresentedViewController(in: sourceWindow) {
+            overlayManager.hide()
+            overlayWindow?.isHidden = true
+            return
+        }
+        overlayWindow?.isHidden = false
+
+        guard
               let (hostingView, components) = frontmostRenderedComponents(in: sourceWindow),
               let overlayHost = overlayHost(for: sourceWindow) else {
             overlayManager.hide()
