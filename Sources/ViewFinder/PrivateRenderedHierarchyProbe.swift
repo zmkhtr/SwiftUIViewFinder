@@ -15,7 +15,6 @@ private protocol ViewFinderDebugDataProvider: AnyObject {
 
 extension _UIHostingView: ViewFinderDebugDataProvider {
     fileprivate func viewFinderDebugData() -> [_ViewDebug.Data] {
-        _renderForTest(interval: 0)
         return _viewDebugData()
     }
 
