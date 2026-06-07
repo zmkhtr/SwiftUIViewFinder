@@ -155,7 +155,11 @@ final class GlobalViewFinderMonitor {
                 hasPresentation: false
             )
             if signature != lastNavigationSignature {
-                cachedInspectedComponents = frontmostRenderedComponents(hostingViews: hostingViews)
+                if let component = frontmostControllerComponent(in: controllers, frame: sourceWindow.bounds) {
+                    cachedInspectedComponents = (sourceWindow, [component])
+                } else {
+                    cachedInspectedComponents = frontmostRenderedComponents(hostingViews: hostingViews)
+                }
             }
             guard let cachedInspectedComponents else {
                 overlayManager.hide()
@@ -207,10 +211,10 @@ final class GlobalViewFinderMonitor {
 
     private func frontmostRenderedComponents(hostingViews: [UIView]) -> (UIView, [RenderedComponent])? {
         for hostingView in hostingViews.reversed() {
-            let mounted = MountedHostingViewReflector.components(in: hostingView)
-            let components = mounted.isEmpty
-                ? PrivateRenderedHierarchyProbe.reflectedComponents(fromUnknownHostingView: hostingView)
-                : mounted
+            let rendered = PrivateRenderedHierarchyProbe.reflectedComponents(fromUnknownHostingView: hostingView)
+            let components = rendered.isEmpty
+                ? MountedHostingViewReflector.components(in: hostingView)
+                : rendered
             guard !components.isEmpty else { continue }
             let mountedText = components.map(\.qualifiedName).joined(separator: "\n")
             if mode.includesLogs, mountedText != lastMountedTypesText {
@@ -234,6 +238,50 @@ final class GlobalViewFinderMonitor {
     private func isFullScreenPresentation(_ controller: UIViewController) -> Bool {
         controller.modalPresentationStyle == .fullScreen
             || controller.modalPresentationStyle == .overFullScreen
+            || controller.presentationController?.shouldPresentInFullscreen == true
+    }
+
+    private func frontmostControllerComponent(
+        in controllers: [UIViewController],
+        frame: CGRect
+    ) -> RenderedComponent? {
+        let module = preferredModuleName
+        guard !module.isEmpty else { return nil }
+        let pattern = #"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*"#
+        guard let expression = try? NSRegularExpression(pattern: pattern) else { return nil }
+
+        for controller in controllers.reversed() {
+            let type = String(reflecting: Swift.type(of: controller))
+            let range = NSRange(type.startIndex..<type.endIndex, in: type)
+            let candidates = expression.matches(in: type, range: range).compactMap { match -> String? in
+                guard let range = Range(match.range, in: type) else { return nil }
+                let candidate = String(type[range])
+                return candidate.hasPrefix("\(module).") && isLikelyComponentName(candidate)
+                    ? candidate
+                    : nil
+            }
+            if let qualifiedName = candidates.last {
+                return RenderedComponent(
+                    name: qualifiedName.split(separator: ".").last.map(String.init) ?? qualifiedName,
+                    qualifiedName: qualifiedName,
+                    frame: frame,
+                    children: []
+                )
+            }
+        }
+        return nil
+    }
+
+    private func isLikelyComponentName(_ qualifiedName: String) -> Bool {
+        let name = qualifiedName.split(separator: ".").last.map(String.init) ?? qualifiedName
+        return ["View", "Screen", "Section", "Card", "Row"].contains {
+            name.hasSuffix($0)
+        }
+    }
+
+    private var preferredModuleName: String {
+        let executable = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String
+        return executable?.replacingOccurrences(of: " ", with: "_") ?? ""
     }
 
     private func allViewControllers(from controller: UIViewController?) -> [UIViewController] {
