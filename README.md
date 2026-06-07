@@ -84,6 +84,16 @@ the root graph is created. ViewFinder then discovers the foreground mounted
 host globally and follows tabs, navigation pushes, and presented views without
 requiring modifiers on application views.
 
+When `TabView` erases every selected custom type, register its components once
+at app setup. ViewFinder reads the selected UIKit tab automatically:
+
+```swift
+ViewFinder.enable(
+    mode: .overlayAndLogs,
+    tabComponents: [HomeScreen.self, SearchScreen.self, SettingsScreen.self]
+)
+```
+
 `enableViewFinder(...)` and `viewFinderComponent(...)` remain available as
 optional explicit integration tools. A component marker can supply an exact
 call-site file and line when SwiftUI erases that component boundary:

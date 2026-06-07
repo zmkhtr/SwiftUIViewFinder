@@ -15,11 +15,16 @@ public enum ViewFinder {
     /// Global activation configures console and overlay behavior.
     public static func enable(
         mode: InspectionMode = .overlayAndLogs,
-        overlayStyle: OverlayStyle = .compact
+        overlayStyle: OverlayStyle = .compact,
+        tabComponents: [Any.Type] = []
     ) {
         self.mode = mode
         #if canImport(UIKit)
-        GlobalViewFinderMonitor.shared.start(mode: mode, style: overlayStyle)
+        GlobalViewFinderMonitor.shared.start(
+            mode: mode,
+            style: overlayStyle,
+            tabComponents: tabComponents
+        )
         #endif
     }
 
@@ -35,7 +40,7 @@ public enum ViewFinder {
     public static func setMode(_ mode: InspectionMode) {
         self.mode = mode
         #if canImport(UIKit)
-        GlobalViewFinderMonitor.shared.start(mode: mode, style: .compact)
+        GlobalViewFinderMonitor.shared.start(mode: mode, style: .compact, tabComponents: [])
         #endif
     }
 

@@ -16,10 +16,23 @@ final class GlobalViewFinderMonitor {
     private var lastMountedTypesText: String?
     private var lastMountedRootsText: String?
     private var lastCandidateText: String?
+    private var registeredTabComponents: [RenderedComponent] = []
 
-    func start(mode: InspectionMode, style: OverlayStyle) {
+    func start(mode: InspectionMode, style: OverlayStyle, tabComponents: [Any.Type]) {
         self.mode = mode
         self.style = style
+        if !tabComponents.isEmpty {
+            registeredTabComponents = tabComponents.map { type in
+                let qualifiedName = String(reflecting: type)
+                let name = qualifiedName.split(separator: ".").last.map(String.init) ?? qualifiedName
+                return RenderedComponent(
+                    name: name,
+                    qualifiedName: qualifiedName,
+                    frame: nil,
+                    children: []
+                )
+            }
+        }
 
         guard mode != .off else {
             stop()
@@ -146,6 +159,18 @@ final class GlobalViewFinderMonitor {
 
     private func activeComponent(in hostingView: UIView, window: UIWindow) -> RenderedComponent? {
         guard let selectedIndex = selectedTabIndex(in: window) else { return nil }
+        if hasPresentedViewController(in: window) || hasPushedViewController(in: window) {
+            return nil
+        }
+        if registeredTabComponents.indices.contains(selectedIndex) {
+            let component = registeredTabComponents[selectedIndex]
+            return RenderedComponent(
+                name: component.name,
+                qualifiedName: component.qualifiedName,
+                frame: hostingView.bounds,
+                children: []
+            )
+        }
         let roots = PrivateRenderedHierarchyProbe.currentRoots(fromUnknownHostingView: hostingView)
         let rootsText = roots.map { $0.formattedTree() }.joined(separator: "\n")
         if mode.includesLogs, rootsText != lastMountedRootsText {
@@ -162,6 +187,23 @@ final class GlobalViewFinderMonitor {
             frame: hostingView.bounds,
             children: []
         )
+    }
+
+    private func hasPresentedViewController(in window: UIWindow) -> Bool {
+        window.rootViewController?.presentedViewController != nil
+    }
+
+    private func hasPushedViewController(in window: UIWindow) -> Bool {
+        allViewControllers(from: window.rootViewController).contains {
+            ($0 as? UINavigationController)?.viewControllers.count ?? 0 > 1
+        }
+    }
+
+    private func allViewControllers(from controller: UIViewController?) -> [UIViewController] {
+        guard let controller else { return [] }
+        return [controller]
+            + controller.children.flatMap { allViewControllers(from: $0) }
+            + allViewControllers(from: controller.presentedViewController)
     }
 
     private func selectedTabIndex(in window: UIWindow) -> Int? {
