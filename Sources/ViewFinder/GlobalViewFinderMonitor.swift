@@ -257,6 +257,7 @@ final class GlobalViewFinderMonitor {
             window.windowLevel = .normal + 1
             window.backgroundColor = .clear
             window.rootViewController = PassThroughOverlayViewController()
+            window.isUserInteractionEnabled = false
             window.isHidden = false
             overlayWindow = window
         }
@@ -295,6 +296,10 @@ final class GlobalViewFinderMonitor {
 private final class PassThroughOverlayWindow: UIWindow {
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
         false
+    }
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        nil
     }
 }
 
