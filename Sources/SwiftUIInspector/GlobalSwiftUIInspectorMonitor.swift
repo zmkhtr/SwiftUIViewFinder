@@ -199,10 +199,17 @@ final class GlobalSwiftUIInspectorMonitor {
     }
 
     private func frontmostApplicationWindow() -> UIWindow? {
-        UIApplication.shared.connectedScenes
+        let sceneWindows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .filter { $0.activationState == .foregroundActive }
             .flatMap(\.windows)
+
+        let legacyWindow = UIApplication.shared.delegate?.window ?? nil
+        let candidateWindows = sceneWindows.isEmpty
+            ? [legacyWindow].compactMap { $0 }
+            : sceneWindows
+
+        return candidateWindows
             .filter {
                 !($0 is PassThroughOverlayWindow)
                     && !$0.isHidden
@@ -268,6 +275,11 @@ final class GlobalSwiftUIInspectorMonitor {
         guard let expression = try? NSRegularExpression(pattern: pattern) else { return nil }
 
         for controller in controllers.reversed() {
+            guard let view = controller.viewIfLoaded,
+                  view.window != nil,
+                  view.isEffectivelyVisible else {
+                continue
+            }
             let type = String(reflecting: Swift.type(of: controller))
             let range = NSRange(type.startIndex..<type.endIndex, in: type)
             let candidates = expression.matches(in: type, range: range).compactMap { match -> String? in
@@ -291,7 +303,7 @@ final class GlobalSwiftUIInspectorMonitor {
 
     private func isLikelyComponentName(_ qualifiedName: String) -> Bool {
         let name = qualifiedName.split(separator: ".").last.map(String.init) ?? qualifiedName
-        return ["View", "Screen", "Section", "Card", "Row"].contains {
+        return ["ViewController", "View", "Screen", "Section", "Card", "Row"].contains {
             name.hasSuffix($0)
         }
     }
@@ -332,22 +344,37 @@ final class GlobalSwiftUIInspectorMonitor {
     }
 
     private func overlayHost(for sourceWindow: UIWindow) -> UIView? {
-        guard let scene = sourceWindow.windowScene else { return nil }
         let window: PassThroughOverlayWindow
-        if let overlayWindow, overlayWindow.windowScene === scene {
+        if let scene = sourceWindow.windowScene {
+            if let overlayWindow, overlayWindow.windowScene === scene {
+                window = overlayWindow
+            } else {
+                overlayWindow?.isHidden = true
+                window = PassThroughOverlayWindow(windowScene: scene)
+                configureOverlayWindow(window)
+                overlayWindow = window
+            }
+            window.frame = scene.screen.bounds
+        } else if let overlayWindow, overlayWindow.windowScene == nil {
             window = overlayWindow
         } else {
             overlayWindow?.isHidden = true
-            window = PassThroughOverlayWindow(windowScene: scene)
-            window.windowLevel = .normal + 1
-            window.backgroundColor = .clear
-            window.rootViewController = PassThroughOverlayViewController()
-            window.isUserInteractionEnabled = false
-            window.isHidden = false
+            window = PassThroughOverlayWindow(frame: sourceWindow.bounds)
+            configureOverlayWindow(window)
             overlayWindow = window
         }
-        window.frame = scene.screen.bounds
+        if sourceWindow.windowScene == nil {
+            window.frame = sourceWindow.bounds
+        }
         return window.rootViewController?.view
+    }
+
+    private func configureOverlayWindow(_ window: PassThroughOverlayWindow) {
+        window.windowLevel = .normal + 1
+        window.backgroundColor = .clear
+        window.rootViewController = PassThroughOverlayViewController()
+        window.isUserInteractionEnabled = false
+        window.isHidden = false
     }
 
     private func converted(

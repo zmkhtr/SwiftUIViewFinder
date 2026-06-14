@@ -30,7 +30,7 @@ Add the package with Swift Package Manager:
 dependencies: [
     .package(
         url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
-        from: "0.5.0"
+        from: "0.5.1"
     )
 ]
 ```
@@ -50,7 +50,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
-            from: "0.5.0"
+            from: "0.5.1"
         ),
     ]
 )
@@ -108,6 +108,30 @@ SwiftUIInspector.enable(
 No `.enableSwiftUIInspector(...)` or `.swiftUIInspectorComponent(...)` modifier
 is required for the global workflow.
 
+### UIKit Apps
+
+Enable SwiftUIInspector once from `AppDelegate`:
+
+```swift
+import SwiftUIInspector
+import UIKit
+
+@main
+final class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        SwiftUIInspector.enable(mode: .overlayAndLogs)
+        return true
+    }
+}
+```
+
+SwiftUIInspector follows SwiftUI views hosted directly inside
+`UITabBarController` and views pushed with `UIHostingController`. See the
+[UIKit demo](Example/UIKitDemo/README.md) for a runnable example and UI test.
+
 ## Output Modes
 
 ```swift
@@ -162,6 +186,9 @@ SwiftUIInspector.inspect(ResearchRootView(), options: options)
 
 - One-time global setup from `App.init()`
 - Selected `TabView` root tracking with registered tab component types
+- UIKit `AppDelegate` and scene-based application windows
+- SwiftUI views hosted in `UITabBarController`
+- UIKit navigation pushes containing `UIHostingController`
 - `NavigationView` and navigation-controller pushes
 - Pushed destinations that hide the tab bar
 - SwiftUI `fullScreenCover` presentations
