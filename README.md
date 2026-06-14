@@ -29,8 +29,8 @@ Add the package with Swift Package Manager:
 ```swift
 dependencies: [
     .package(
-        url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
-        from: "0.5.1"
+        url: "https://github.com/zmkhtr/SwiftUIInspector.git",
+        from: "0.6.0"
     )
 ]
 ```
@@ -49,8 +49,8 @@ let package = Package(
     name: "AppDependencies",
     dependencies: [
         .package(
-            url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
-            from: "0.5.1"
+            url: "https://github.com/zmkhtr/SwiftUIInspector.git",
+            from: "0.6.0"
         ),
     ]
 )
