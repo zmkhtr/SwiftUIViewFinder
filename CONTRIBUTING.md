@@ -1,6 +1,6 @@
 # Contributing
 
-SwiftUIViewFinder is research-first. Contributions should improve component-name
+SwiftUIInspector is research-first. Contributions should improve component-name
 recovery or prove a limitation before adding inspector UI.
 
 ## Development Setup
@@ -13,19 +13,19 @@ Requirements:
 Run:
 
 ```bash
-swift run ViewFinderResearch
+swift run SwiftUIInspectorResearch
 swift test
 xcodebuild test \
-  -scheme SwiftUIViewFinder-Package \
+  -scheme SwiftUIInspector-Package \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
 ## Project Structure
 
 ```text
-Sources/ViewFinder/          Package implementation
-Sources/ViewFinderResearch/  Console root-value prototype
-Tests/ViewFinderTests/       macOS and iOS simulator experiments
+Sources/SwiftUIInspector/          Package implementation
+Sources/SwiftUIInspectorResearch/  Console root-value prototype
+Tests/SwiftUIInspectorTests/       macOS and iOS simulator experiments
 Docs/                        Architecture, research, troubleshooting
 Research/                    Reproducible reverse-engineering notes
 Scripts/                     SDK symbol inspection tools

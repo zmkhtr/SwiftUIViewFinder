@@ -96,7 +96,7 @@ enum MountedRootValueInspector {
             && !type.hasPrefix("(extension in Foundation):")
             && !type.hasPrefix("__C.")
             && !type.hasPrefix("AttributeGraph.")
-            && !type.hasPrefix("ViewFinder.")
+            && !type.hasPrefix("SwiftUIInspector.")
     }
 
     private static func readableName(from qualifiedName: String) -> String {

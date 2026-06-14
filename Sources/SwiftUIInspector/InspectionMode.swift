@@ -1,4 +1,4 @@
-/// Controls which ViewFinder output mechanisms are active.
+/// Controls which SwiftUIInspector output mechanisms are active.
 public enum InspectionMode: String, CaseIterable, Codable, Sendable {
     case overlay
     case logs

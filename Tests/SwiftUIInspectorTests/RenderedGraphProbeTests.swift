@@ -2,7 +2,7 @@
 import SwiftUI
 import Testing
 import UIKit
-@testable import ViewFinder
+@testable import SwiftUIInspector
 
 private struct RenderedProbeScreen: View {
     var body: some View {
@@ -42,7 +42,7 @@ func privateRenderedGraphContainsApplicationTypeNames() {
     let snapshot = PrivateRenderedHierarchyProbe.capture(rootView: RenderedProbeScreen())
     let typeNames = snapshot?.discoveredTypeNames ?? []
 
-    print("[ViewFinder] Private rendered-graph types:\n\(typeNames.joined(separator: "\n"))")
+    print("[SwiftUIInspector] Private rendered-graph types:\n\(typeNames.joined(separator: "\n"))")
 
     #expect(snapshot != nil)
     if snapshot?.requestedAllProperties == true {
@@ -96,7 +96,7 @@ func reusesUnchangedOverlayHierarchy() {
         frame: host.bounds,
         children: []
     )
-    let manager = ViewFinderOverlayManager()
+    let manager = SwiftUIInspectorOverlayManager()
 
     manager.show(components: [component], relativeTo: host, style: .compact)
     let firstOverlay = host.subviews.last

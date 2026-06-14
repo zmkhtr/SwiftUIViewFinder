@@ -80,7 +80,7 @@ public struct InspectionReport: Sendable {
             return tree
         }
 
-        let warningText = warnings.map { "[ViewFinder] Warning: \($0)" }.joined(separator: "\n")
+        let warningText = warnings.map { "[SwiftUIInspector] Warning: \($0)" }.joined(separator: "\n")
         return tree.isEmpty ? warningText : "\(tree)\n\n\(warningText)"
     }
 }

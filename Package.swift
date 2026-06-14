@@ -3,36 +3,32 @@
 import PackageDescription
 
 let package = Package(
-    name: "SwiftUIViewFinder",
+    name: "SwiftUIInspector",
     platforms: [
         .iOS(.v15),
         .macOS(.v13),
     ],
     products: [
         .library(
-            name: "ViewFinder",
-            targets: ["ViewFinder"]
-        ),
-        .library(
-            name: "viewFinder",
-            targets: ["ViewFinder"]
+            name: "SwiftUIInspector",
+            targets: ["SwiftUIInspector"]
         ),
         .executable(
-            name: "ViewFinderResearch",
-            targets: ["ViewFinderResearch"]
+            name: "SwiftUIInspectorResearch",
+            targets: ["SwiftUIInspectorResearch"]
         ),
     ],
     targets: [
         .target(
-            name: "ViewFinder"
+            name: "SwiftUIInspector"
         ),
         .executableTarget(
-            name: "ViewFinderResearch",
-            dependencies: ["ViewFinder"]
+            name: "SwiftUIInspectorResearch",
+            dependencies: ["SwiftUIInspector"]
         ),
         .testTarget(
-            name: "ViewFinderTests",
-            dependencies: ["ViewFinder"]
+            name: "SwiftUIInspectorTests",
+            dependencies: ["SwiftUIInspector"]
         ),
     ]
 )

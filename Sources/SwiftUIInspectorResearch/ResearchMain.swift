@@ -1,5 +1,5 @@
 import SwiftUI
-import ViewFinder
+import SwiftUIInspector
 
 private struct HomeScreen: View {
     var body: some View {
@@ -29,11 +29,11 @@ private struct AvatarView: View {
 }
 
 @main
-private enum ViewFinderResearch {
+private enum SwiftUIInspectorResearch {
     @MainActor
     static func main() {
-        ViewFinder.enable(mode: .logs)
-        let report = ViewFinder.inspect(
+        SwiftUIInspector.enable(mode: .logs)
+        let report = SwiftUIInspector.inspect(
             HomeScreen(),
             options: HierarchyOptions(bodyEvaluationPolicy: .unsafe)
         )

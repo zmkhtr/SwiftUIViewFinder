@@ -23,23 +23,21 @@ Foreground UIWindow
 
 ## Public Surface
 
-The canonical package product and public module are both named `ViewFinder`.
-The package also exposes a lowercase `viewFinder` product alias for
-case-sensitive Tuist dependency configurations.
+The package product and public module are both named `SwiftUIInspector`.
 
 ```swift
-ViewFinder.enable()
-ViewFinder.enable(mode: .logs)
-ViewFinder.disable()
-ViewFinder.setMode(.off)
-ViewFinder.inspect(rootView)
+SwiftUIInspector.enable()
+SwiftUIInspector.enable(mode: .logs)
+SwiftUIInspector.disable()
+SwiftUIInspector.setMode(.off)
+SwiftUIInspector.inspect(rootView)
 ```
 
 SwiftUI integration:
 
 ```swift
 RootView()
-    .enableViewFinder(mode: .logs)
+    .enableSwiftUIInspector(mode: .logs)
 ```
 
 ## Root-Value Inspector

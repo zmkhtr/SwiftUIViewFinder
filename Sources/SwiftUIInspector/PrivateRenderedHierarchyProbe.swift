@@ -7,19 +7,19 @@ import SwiftUI
 import UIKit
 
 @MainActor
-private protocol ViewFinderDebugDataProvider: AnyObject {
-    func viewFinderDebugData() -> [_ViewDebug.Data]
+private protocol SwiftUIInspectorDebugDataProvider: AnyObject {
+    func swiftUIInspectorDebugData() -> [_ViewDebug.Data]
     @available(iOS 16.0, *)
-    func viewFinderCurrentRoots() -> [ComponentNode]
+    func swiftUIInspectorCurrentRoots() -> [ComponentNode]
 }
 
-extension _UIHostingView: ViewFinderDebugDataProvider {
-    fileprivate func viewFinderDebugData() -> [_ViewDebug.Data] {
+extension _UIHostingView: SwiftUIInspectorDebugDataProvider {
+    fileprivate func swiftUIInspectorDebugData() -> [_ViewDebug.Data] {
         return _viewDebugData()
     }
 
     @available(iOS 16.0, *)
-    fileprivate func viewFinderCurrentRoots() -> [ComponentNode] {
+    fileprivate func swiftUIInspectorCurrentRoots() -> [ComponentNode] {
         MountedRootValueInspector.currentRoots(in: rootView)
     }
 }
@@ -116,7 +116,7 @@ public enum PrivateRenderedHierarchyProbe {
 
     static func currentRoots(fromUnknownHostingView hostingView: UIView) -> [ComponentNode] {
         guard #available(iOS 16.0, *) else { return [] }
-        return (hostingView as? any ViewFinderDebugDataProvider)?.viewFinderCurrentRoots() ?? []
+        return (hostingView as? any SwiftUIInspectorDebugDataProvider)?.swiftUIInspectorCurrentRoots() ?? []
     }
 
     private static func capture<Content: View>(
@@ -137,7 +137,7 @@ public enum PrivateRenderedHierarchyProbe {
     }
 
     private static func debugData(fromUnknownHostingView hostingView: UIView) -> [_ViewDebug.Data]? {
-        (hostingView as? any ViewFinderDebugDataProvider)?.viewFinderDebugData()
+        (hostingView as? any SwiftUIInspectorDebugDataProvider)?.swiftUIInspectorDebugData()
     }
 
     private static func requestSafeViewDebugProperties() -> Bool {

@@ -131,7 +131,7 @@ Example payload fragments:
 
 ```json
 {
-  "type": "ViewFinderTests...RenderedProbeScreen",
+  "type": "SwiftUIInspectorTests...RenderedProbeScreen",
   "readableType": "RenderedProbeScreen"
 }
 ```

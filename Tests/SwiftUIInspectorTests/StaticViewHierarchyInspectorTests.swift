@@ -1,6 +1,6 @@
 import SwiftUI
 import Testing
-@testable import ViewFinder
+@testable import SwiftUIInspector
 
 private struct TestHomeScreen: View {
     var body: some View {
@@ -78,9 +78,9 @@ func doesNotEvaluateEnvironmentDependentBodyByDefault() {
 @MainActor
 @Test
 func disabledGlobalEntryPointDoesNoInspection() {
-    ViewFinder.disable()
+    SwiftUIInspector.disable()
 
-    let report = ViewFinder.inspect(TestHomeScreen())
+    let report = SwiftUIInspector.inspect(TestHomeScreen())
 
     #expect(report.roots.isEmpty)
 }

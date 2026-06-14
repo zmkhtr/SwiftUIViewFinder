@@ -2,15 +2,15 @@ import SwiftUI
 import Foundation
 import os
 
-/// Global entry point for the ViewFinder research prototype.
+/// Global entry point for the SwiftUIInspector research prototype.
 @MainActor
-public enum ViewFinder {
-    private static let logger = Logger(subsystem: "ViewFinder", category: "RootValue")
+public enum SwiftUIInspector {
+    private static let logger = Logger(subsystem: "SwiftUIInspector", category: "RootValue")
 
     /// The currently active inspection mode.
     public private(set) static var mode: InspectionMode = .off
 
-    /// Enables ViewFinder globally.
+    /// Enables SwiftUIInspector globally.
     ///
     /// Global activation configures console and overlay behavior.
     public static func enable(
@@ -20,7 +20,7 @@ public enum ViewFinder {
     ) {
         self.mode = mode
         #if canImport(UIKit)
-        GlobalViewFinderMonitor.shared.start(
+        GlobalSwiftUIInspectorMonitor.shared.start(
             mode: mode,
             style: overlayStyle,
             tabComponents: tabComponents
@@ -28,11 +28,11 @@ public enum ViewFinder {
         #endif
     }
 
-    /// Disables all ViewFinder work.
+    /// Disables all SwiftUIInspector work.
     public static func disable() {
         mode = .off
         #if canImport(UIKit)
-        GlobalViewFinderMonitor.shared.stop()
+        GlobalSwiftUIInspectorMonitor.shared.stop()
         #endif
     }
 
@@ -40,7 +40,7 @@ public enum ViewFinder {
     public static func setMode(_ mode: InspectionMode) {
         self.mode = mode
         #if canImport(UIKit)
-        GlobalViewFinderMonitor.shared.start(mode: mode, style: .compact, tabComponents: [])
+        GlobalSwiftUIInspectorMonitor.shared.start(mode: mode, style: .compact, tabComponents: [])
         #endif
     }
 
@@ -57,8 +57,8 @@ public enum ViewFinder {
         let report = StaticViewHierarchyInspector(options: options).inspect(root)
         if mode.includesLogs {
             let formatted = report.formatted()
-            print("[ViewFinder] Root-value component hierarchy:\n\n\(formatted)")
-            NSLog("[ViewFinder] Root-value component hierarchy:\n\n%@", formatted)
+            print("[SwiftUIInspector] Root-value component hierarchy:\n\n\(formatted)")
+            NSLog("[SwiftUIInspector] Root-value component hierarchy:\n\n%@", formatted)
             logger.info("Root-value component hierarchy:\n\(formatted, privacy: .public)")
         }
         return report

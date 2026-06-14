@@ -7,8 +7,8 @@ import os
 final class MountedViewInspector {
     static let shared = MountedViewInspector()
 
-    private let overlayManager = ViewFinderOverlayManager()
-    private let logger = Logger(subsystem: "ViewFinder", category: "RenderedGraph")
+    private let overlayManager = SwiftUIInspectorOverlayManager()
+    private let logger = Logger(subsystem: "SwiftUIInspector", category: "RenderedGraph")
     private weak var locator: UIView?
     private var mode: InspectionMode = .off
     private var style: OverlayStyle = .compact
@@ -75,12 +75,12 @@ final class MountedViewInspector {
 
         guard locator.window != nil else {
             if mode.includesLogs, lastHierarchyText != "(graph unavailable)" {
-                print("[ViewFinder] Mounted overlay host is unavailable.")
-                NSLog("[ViewFinder] Mounted overlay host is unavailable.")
+                print("[SwiftUIInspector] Mounted overlay host is unavailable.")
+                NSLog("[SwiftUIInspector] Mounted overlay host is unavailable.")
                 logger.warning("Mounted overlay host is unavailable.")
                 lastHierarchyText = "(graph unavailable)"
             }
-            overlayManager.showStatus("ViewFinder: host unavailable", relativeTo: locator)
+            overlayManager.showStatus("SwiftUIInspector: host unavailable", relativeTo: locator)
             return
         }
 
@@ -98,9 +98,9 @@ final class MountedViewInspector {
             .filter { !$0.isEmpty }
             .joined(separator: "\n")
         if mode.includesLogs, tree != lastHierarchyText {
-            print("[ViewFinder] Rendered component hierarchy:\n\n\(tree.isEmpty ? "(no application components found)" : tree)")
+            print("[SwiftUIInspector] Rendered component hierarchy:\n\n\(tree.isEmpty ? "(no application components found)" : tree)")
             NSLog(
-                "[ViewFinder] Rendered component hierarchy:\n\n%@",
+                "[SwiftUIInspector] Rendered component hierarchy:\n\n%@",
                 tree.isEmpty ? "(no application components found)" : tree
             )
             logger.info("Rendered component hierarchy:\n\(tree.isEmpty ? "(no application components found)" : tree, privacy: .public)")
@@ -111,7 +111,7 @@ final class MountedViewInspector {
             if components.contains(where: { $0.frame != nil }) {
                 overlayManager.show(components: components, relativeTo: locator, style: style)
             } else {
-                overlayManager.showStatus("ViewFinder: no component frames", relativeTo: locator)
+                overlayManager.showStatus("SwiftUIInspector: no component frames", relativeTo: locator)
             }
         } else {
             overlayManager.hide()
@@ -140,7 +140,7 @@ final class MountedViewInspector {
     }
 }
 
-struct ViewFinderLocator: UIViewRepresentable {
+struct SwiftUIInspectorLocator: UIViewRepresentable {
     let mode: InspectionMode
     let overlayStyle: OverlayStyle
     let currentRoots: [ComponentNode]
@@ -176,7 +176,7 @@ struct ViewFinderLocator: UIViewRepresentable {
 }
 
 @MainActor
-final class ViewFinderOverlayManager {
+final class SwiftUIInspectorOverlayManager {
     private weak var overlayView: UIView?
     private weak var overlayHost: UIView?
     private var renderedComponents: [RenderedComponent] = []
@@ -196,7 +196,7 @@ final class ViewFinderOverlayManager {
         let container = PassThroughOverlayView(frame: overlayHost.bounds)
         container.backgroundColor = .clear
         container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        container.accessibilityIdentifier = "ViewFinderOverlay"
+        container.accessibilityIdentifier = "SwiftUIInspectorOverlay"
         let safeArea = safeAreaFrame(relativeTo: overlayHost)
 
         let visibleComponents = components
@@ -259,7 +259,7 @@ final class ViewFinderOverlayManager {
         let safeArea = safeAreaFrame(relativeTo: view)
         label.frame = CGRect(x: safeArea.minX + 12, y: safeArea.minY + 8, width: 220, height: 28)
         label.isUserInteractionEnabled = false
-        label.accessibilityIdentifier = "ViewFinderOverlayStatus"
+        label.accessibilityIdentifier = "SwiftUIInspectorOverlayStatus"
         view.addSubview(label)
         overlayView = label
     }

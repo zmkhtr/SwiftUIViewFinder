@@ -9,5 +9,5 @@ hide the central technical risk.
 The current executable proof-of-concept is:
 
 ```bash
-swift run ViewFinderResearch
+swift run SwiftUIInspectorResearch
 ```

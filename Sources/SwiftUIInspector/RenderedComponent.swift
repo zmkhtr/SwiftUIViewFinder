@@ -121,7 +121,7 @@ enum RenderedGraphParser {
     private static func isApplicationType(_ type: String) -> Bool {
         let frameworkPrefixes = [
             "Swift.", "SwiftUI.", "SwiftUICore.", "Foundation.", "CoreFoundation.",
-            "CoreGraphics.", "UIKit.", "__C.", "AttributeGraph.", "ViewFinder.",
+            "CoreGraphics.", "UIKit.", "__C.", "AttributeGraph.", "SwiftUIInspector.",
         ]
         return !frameworkPrefixes.contains { type.hasPrefix($0) }
     }

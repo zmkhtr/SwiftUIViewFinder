@@ -5,12 +5,12 @@ public extension View {
     ///
     /// The modifier does not execute application view bodies or use SwiftUI's
     /// private rendered-graph serializer.
-    func enableViewFinder(
+    func enableSwiftUIInspector(
         mode: InspectionMode = .overlayAndLogs,
         overlayStyle: OverlayStyle = .compact
     ) -> some View {
         return modifier(
-            ViewFinderRootModifier(
+            SwiftUIInspectorRootModifier(
                 contentForInspection: self,
                 mode: mode,
                 overlayStyle: overlayStyle
@@ -22,13 +22,13 @@ public extension View {
     ///
     /// Use this on custom component instances when SwiftUI's private rendered
     /// graph erases their boundary, such as children inside `TabView`.
-    func viewFinderComponent(
+    func swiftUIInspectorComponent(
         isActive: Bool = true,
         fileID: StaticString = #fileID,
         line: UInt = #line
     ) -> some View {
         modifier(
-            ViewFinderComponentModifier(
+            SwiftUIInspectorComponentModifier(
                 componentType: Self.self,
                 isActive: isActive,
                 sourceLocation: "\(fileID):\(line)"
@@ -37,7 +37,7 @@ public extension View {
     }
 }
 
-private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
+private struct SwiftUIInspectorRootModifier<InspectedContent: View>: ViewModifier {
     let contentForInspection: InspectedContent
     let mode: InspectionMode
     let overlayStyle: OverlayStyle
@@ -49,13 +49,13 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
             .roots
 
         content
-            .coordinateSpace(name: ViewFinderCoordinateSpace.root)
-            .onPreferenceChange(ViewFinderComponentPreferenceKey.self) {
+            .coordinateSpace(name: SwiftUIInspectorCoordinateSpace.root)
+            .onPreferenceChange(SwiftUIInspectorComponentPreferenceKey.self) {
                 markedComponents = $0
             }
             .overlay {
                 #if canImport(UIKit)
-                ViewFinderLocator(
+                SwiftUIInspectorLocator(
                     mode: mode,
                     overlayStyle: overlayStyle,
                     currentRoots: currentRoots,
@@ -65,19 +65,19 @@ private struct ViewFinderRootModifier<InspectedContent: View>: ViewModifier {
                 #endif
             }
             .onAppear {
-                ViewFinder.enable(mode: mode)
+                SwiftUIInspector.enable(mode: mode)
                 if mode.includesLogs {
-                    ViewFinder.inspect(contentForInspection)
+                    SwiftUIInspector.inspect(contentForInspection)
                 }
             }
     }
 }
 
-private enum ViewFinderCoordinateSpace {
-    static let root = "ViewFinder.RootCoordinateSpace"
+private enum SwiftUIInspectorCoordinateSpace {
+    static let root = "SwiftUIInspector.RootCoordinateSpace"
 }
 
-private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
+private struct SwiftUIInspectorComponentModifier<Component: View>: ViewModifier {
     let componentType: Component.Type
     let isActive: Bool
     let sourceLocation: String
@@ -86,12 +86,12 @@ private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
         content.background {
             GeometryReader { proxy in
                 Color.clear.preference(
-                    key: ViewFinderComponentPreferenceKey.self,
+                    key: SwiftUIInspectorComponentPreferenceKey.self,
                     value: isActive ? [
                         RenderedComponent(
                             name: readableName,
                             qualifiedName: qualifiedName,
-                            frame: proxy.frame(in: .named(ViewFinderCoordinateSpace.root)),
+                            frame: proxy.frame(in: .named(SwiftUIInspectorCoordinateSpace.root)),
                             sourceLocation: sourceLocation,
                             children: []
                         )
@@ -112,7 +112,7 @@ private struct ViewFinderComponentModifier<Component: View>: ViewModifier {
     }
 }
 
-private struct ViewFinderComponentPreferenceKey: PreferenceKey {
+private struct SwiftUIInspectorComponentPreferenceKey: PreferenceKey {
     static let defaultValue: [RenderedComponent] = []
 
     static func reduce(value: inout [RenderedComponent], nextValue: () -> [RenderedComponent]) {

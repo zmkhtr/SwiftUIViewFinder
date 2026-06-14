@@ -53,6 +53,6 @@ public struct HierarchyOptions: Sendable {
         "AppKit.",
         "Combine.",
         "Observation.",
-        "ViewFinder.",
+        "SwiftUIInspector.",
     ]
 }

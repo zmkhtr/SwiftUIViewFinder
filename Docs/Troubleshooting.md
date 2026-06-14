@@ -2,25 +2,25 @@
 
 ## No Components Found
 
-Confirm ViewFinder is enabled before inspection:
+Confirm SwiftUIInspector is enabled before inspection:
 
 ```swift
-ViewFinder.enable(mode: .logs)
-ViewFinder.inspect(RootView())
+SwiftUIInspector.enable(mode: .logs)
+SwiftUIInspector.inspect(RootView())
 ```
 
-`ViewFinder.inspect` intentionally returns an empty report while mode is `.off`.
+`SwiftUIInspector.inspect` intentionally returns an empty report while mode is `.off`.
 
 ## Only The Root Appears
 
 Root-value inspection may not cross `AnyView`, lazy containers, closures,
 environment-dependent content, or descendants created only inside custom
-`body` properties. ViewFinder deliberately does not execute application bodies
+`body` properties. SwiftUIInspector deliberately does not execute application bodies
 by default because doing so outside SwiftUI can crash.
 
 ## Missing ObservableObject Crash
 
-Update to ViewFinder 0.1.1 or later. Version 0.1.0 evaluated application bodies
+Update to SwiftUIInspector 0.1.1 or later. Version 0.1.0 evaluated application bodies
 outside SwiftUI's mounted environment, which could trigger:
 
 ```text

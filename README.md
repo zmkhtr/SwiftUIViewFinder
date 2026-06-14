@@ -1,22 +1,22 @@
-# SwiftUIViewFinder
+# SwiftUIInspector
 
-SwiftUIViewFinder is a debug-only Swift package that identifies the active
+SwiftUIInspector is a debug-only Swift package that identifies the active
 SwiftUI view at runtime and draws a non-interactive overlay containing its
 struct name.
 
-Enable it once from `App.init()`. ViewFinder then follows tabs, navigation
+Enable it once from `App.init()`. SwiftUIInspector then follows tabs, navigation
 pushes, hidden-tab destinations, and full-screen presentations without adding
 modifiers throughout the application.
 
 > [!WARNING]
-> ViewFinder uses private SwiftUI runtime APIs. Keep it out of App Store
+> SwiftUIInspector uses private SwiftUI runtime APIs. Keep it out of App Store
 > release builds.
 
 ## Screenshots
 
 | Selected tab | Navigation push with hidden tab bar | Full-screen presentation |
 | --- | --- | --- |
-| <img src="Docs/Images/viewfinder-home.png" width="250" alt="HomeScreen overlay"> | <img src="Docs/Images/viewfinder-hidden-tab-push.png" width="250" alt="Hidden tab navigation overlay"> | <img src="Docs/Images/viewfinder-full-screen-presentation.png" width="250" alt="Full-screen presentation overlay"> |
+| <img src="Docs/Images/swiftui-inspector-home.png" width="250" alt="HomeScreen overlay"> | <img src="Docs/Images/swiftui-inspector-hidden-tab-push.png" width="250" alt="Hidden tab navigation overlay"> | <img src="Docs/Images/swiftui-inspector-full-screen-presentation.png" width="250" alt="Full-screen presentation overlay"> |
 
 The overlay window passes all touches through to the application. System sheets,
 including `FamilyActivityPicker`, temporarily hide the overlay so they remain
@@ -30,16 +30,16 @@ Add the package with Swift Package Manager:
 dependencies: [
     .package(
         url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
-        from: "0.4.33"
+        from: "0.5.0"
     )
 ]
 ```
 
-Then add the `ViewFinder` product to the application target.
+Then add the `SwiftUIInspector` product to the application target.
 
 ### Tuist
 
-Add SwiftUIViewFinder to `Tuist/Package.swift`:
+Add SwiftUIInspector to `Tuist/Package.swift`:
 
 ```swift
 // swift-tools-version: 6.0
@@ -50,7 +50,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
-            from: "0.4.33"
+            from: "0.5.0"
         ),
     ]
 )
@@ -60,28 +60,25 @@ Then add the external dependency to the relevant target in `Project.swift`:
 
 ```swift
 dependencies: [
-    .external(name: "ViewFinder"),
+    .external(name: "SwiftUIInspector"),
 ]
 ```
 
-Tuist external dependency names are case-sensitive. `ViewFinder` is the
-canonical product name. Version `0.4.33` and later also expose `viewFinder` as a
-compatibility alias, so existing `.external(name: "viewFinder")`
-configurations continue to work. Always use `import ViewFinder` in source
-files.
+Tuist external dependency names are case-sensitive. Use `SwiftUIInspector` for
+the product name and `import SwiftUIInspector` in source files.
 
 ## Quick Start
 
-Enable ViewFinder before SwiftUI creates the root graph:
+Enable SwiftUIInspector before SwiftUI creates the root graph:
 
 ```swift
 import SwiftUI
-import ViewFinder
+import SwiftUIInspector
 
 @main
 struct MyApp: App {
     init() {
-        ViewFinder.enable(mode: .overlayAndLogs)
+        SwiftUIInspector.enable(mode: .overlayAndLogs)
     }
 
     var body: some Scene {
@@ -94,11 +91,11 @@ struct MyApp: App {
 
 That one call is enough for navigation pushes and full-screen presentations.
 
-For a `TabView`, register the root component for each tab once. ViewFinder reads
-the selected UIKit tab automatically:
+For a `TabView`, register the root component for each tab once.
+SwiftUIInspector reads the selected UIKit tab automatically:
 
 ```swift
-ViewFinder.enable(
+SwiftUIInspector.enable(
     mode: .overlayAndLogs,
     tabComponents: [
         HomeScreen.self,
@@ -108,22 +105,22 @@ ViewFinder.enable(
 )
 ```
 
-No `.enableViewFinder(...)` or `.viewFinderComponent(...)` modifier is required
-for the global workflow.
+No `.enableSwiftUIInspector(...)` or `.swiftUIInspectorComponent(...)` modifier
+is required for the global workflow.
 
 ## Output Modes
 
 ```swift
-ViewFinder.enable(mode: .overlay)
-ViewFinder.enable(mode: .logs)
-ViewFinder.enable(mode: .overlayAndLogs)
-ViewFinder.disable()
+SwiftUIInspector.enable(mode: .overlay)
+SwiftUIInspector.enable(mode: .logs)
+SwiftUIInspector.enable(mode: .overlayAndLogs)
+SwiftUIInspector.disable()
 ```
 
 Overlay styles:
 
 ```swift
-ViewFinder.enable(
+SwiftUIInspector.enable(
     mode: .overlayAndLogs,
     overlayStyle: .detailed
 )
@@ -142,14 +139,14 @@ Mark a specific component:
 
 ```swift
 HomeScreen()
-    .viewFinderComponent()
+    .swiftUIInspectorComponent()
 ```
 
 Inspect a concrete root value:
 
 ```swift
-ViewFinder.enable(mode: .logs)
-let report = ViewFinder.inspect(RootView())
+SwiftUIInspector.enable(mode: .logs)
+let report = SwiftUIInspector.inspect(RootView())
 print(report.formatted())
 ```
 
@@ -158,7 +155,7 @@ not depend on SwiftUI-managed environment or dynamic properties:
 
 ```swift
 let options = HierarchyOptions(bodyEvaluationPolicy: .unsafe)
-ViewFinder.inspect(ResearchRootView(), options: options)
+SwiftUIInspector.inspect(ResearchRootView(), options: options)
 ```
 
 ## Supported Behavior
@@ -178,7 +175,7 @@ ViewFinder.inspect(ResearchRootView(), options: options)
 swift test
 
 xcodebuild test \
-  -scheme SwiftUIViewFinder-Package \
+  -scheme SwiftUIInspector-Package \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
@@ -189,7 +186,7 @@ xcodebuild test \
 - Registering tab root types is currently required for reliable `TabView`
   selection tracking.
 - SwiftUI can erase component boundaries inside complex containers.
-- Exact source file and line information requires `.viewFinderComponent()`.
+- Exact source file and line information requires `.swiftUIInspectorComponent()`.
 - The overlay may contain noisy or overlapping labels for complex view graphs.
 
 ## Documentation

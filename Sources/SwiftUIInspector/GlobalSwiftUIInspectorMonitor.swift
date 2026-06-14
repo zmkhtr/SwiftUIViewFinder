@@ -13,11 +13,11 @@ private struct NavigationSignature: Equatable {
 }
 
 @MainActor
-final class GlobalViewFinderMonitor {
-    static let shared = GlobalViewFinderMonitor()
+final class GlobalSwiftUIInspectorMonitor {
+    static let shared = GlobalSwiftUIInspectorMonitor()
 
-    private let overlayManager = ViewFinderOverlayManager()
-    private let logger = Logger(subsystem: "ViewFinder", category: "GlobalRenderedGraph")
+    private let overlayManager = SwiftUIInspectorOverlayManager()
+    private let logger = Logger(subsystem: "SwiftUIInspector", category: "GlobalRenderedGraph")
     private var mode: InspectionMode = .off
     private var style: OverlayStyle = .compact
     private var refreshTimer: Timer?
@@ -232,7 +232,7 @@ final class GlobalViewFinderMonitor {
             let mountedText = components.map(\.qualifiedName).joined(separator: "\n")
             if mode.includesLogs, mountedText != lastMountedTypesText {
                 lastMountedTypesText = mountedText
-                print("[ViewFinder] Current mounted application types:\n\(mountedText)")
+                print("[SwiftUIInspector] Current mounted application types:\n\(mountedText)")
             }
             return (hostingView, components)
         }
@@ -373,7 +373,7 @@ final class GlobalViewFinderMonitor {
         guard text != lastHierarchyText else { return }
         lastHierarchyText = text
         let message = text.isEmpty ? "(no application components found)" : text
-        print("[ViewFinder] Global rendered component hierarchy:\n\n\(message)")
+        print("[SwiftUIInspector] Global rendered component hierarchy:\n\n\(message)")
         logger.info("Global rendered component hierarchy:\n\(message, privacy: .public)")
     }
 }
