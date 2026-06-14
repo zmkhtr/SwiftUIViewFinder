@@ -13,6 +13,10 @@ let package = Package(
             name: "ViewFinder",
             targets: ["ViewFinder"]
         ),
+        .library(
+            name: "viewFinder",
+            targets: ["ViewFinder"]
+        ),
         .executable(
             name: "ViewFinderResearch",
             targets: ["ViewFinderResearch"]

@@ -23,7 +23,9 @@ Foreground UIWindow
 
 ## Public Surface
 
-The package product and public module are both named `ViewFinder`.
+The canonical package product and public module are both named `ViewFinder`.
+The package also exposes a lowercase `viewFinder` product alias for
+case-sensitive Tuist dependency configurations.
 
 ```swift
 ViewFinder.enable()

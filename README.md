@@ -30,12 +30,45 @@ Add the package with Swift Package Manager:
 dependencies: [
     .package(
         url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
-        from: "0.4.32"
+        from: "0.4.33"
     )
 ]
 ```
 
 Then add the `ViewFinder` product to the application target.
+
+### Tuist
+
+Add SwiftUIViewFinder to `Tuist/Package.swift`:
+
+```swift
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "AppDependencies",
+    dependencies: [
+        .package(
+            url: "https://github.com/zmkhtr/SwiftUIViewFinder.git",
+            from: "0.4.33"
+        ),
+    ]
+)
+```
+
+Then add the external dependency to the relevant target in `Project.swift`:
+
+```swift
+dependencies: [
+    .external(name: "ViewFinder"),
+]
+```
+
+Tuist external dependency names are case-sensitive. `ViewFinder` is the
+canonical product name. Version `0.4.33` and later also expose `viewFinder` as a
+compatibility alias, so existing `.external(name: "viewFinder")`
+configurations continue to work. Always use `import ViewFinder` in source
+files.
 
 ## Quick Start
 
