@@ -4,6 +4,8 @@ SwiftUIInspector is a debug-only Swift package that identifies the active
 SwiftUI view at runtime and draws a non-interactive overlay containing its
 struct name.
 
+[GitHub repository](https://github.com/zmkhtr/SwiftUIInspector)
+
 Enable it once from `App.init()`. SwiftUIInspector then follows tabs, navigation
 pushes, hidden-tab destinations, and full-screen presentations without adding
 modifiers throughout the application.
